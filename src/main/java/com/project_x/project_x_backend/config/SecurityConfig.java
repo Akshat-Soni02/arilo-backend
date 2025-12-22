@@ -21,7 +21,7 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
         .csrf(AbstractHttpConfigurer::disable)
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/api/auth/**", "/oauth2/**", "/login/**", "/h2-console/**", "/error").permitAll()
+            .requestMatchers("/api/auth/**", "/oauth2/**", "/login/**", "/h2-console/**","/api/audio/upload", "/error").permitAll()
             .anyRequest().authenticated()
         )
         .oauth2Login(oauth2 -> oauth2

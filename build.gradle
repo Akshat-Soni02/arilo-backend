@@ -52,6 +52,7 @@ dependencies {
 	implementation 'org.liquibase:liquibase-core'
 	implementation("org.liquibase:liquibase-core")
 	implementation("org.postgresql:postgresql")
+	implementation 'com.google.cloud:google-cloud-storage:2.26.1'
 }
 
 tasks.named('test') {
