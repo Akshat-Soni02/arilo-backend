@@ -109,6 +109,7 @@ public class AudioService {
                 contentType.equals("audio/x-wav") || // wav
                 contentType.equals("audio/mp4") || // m4a
                 contentType.equals("audio/x-m4a") || // m4a
+                contentType.equals("audio/wave") || // wave
                 contentType.equals("audio/flac"); // flac
     }
 

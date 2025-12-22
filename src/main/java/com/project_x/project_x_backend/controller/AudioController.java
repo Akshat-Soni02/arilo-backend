@@ -32,6 +32,11 @@ public class AudioController {
     @Autowired
     private JwtService jwtService;
 
+    @GetMapping("/test")
+    public String testAudio() {
+        return "AudioController testAudio() method called";
+    }
+
     // List of supported audio MIME types
     private static final List<String> SUPPORTED_AUDIO_TYPES = Arrays.asList(
             "audio/mpeg",
@@ -39,7 +44,8 @@ public class AudioController {
             "audio/x-wav",
             "audio/mp4",
             "audio/x-m4a",
-            "audio/flac");
+            "audio/flac",
+            "audio/wave");
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AudioUploadResponse> uploadAudioFile(
@@ -64,6 +70,11 @@ public class AudioController {
             }
             logger.info("JWT token validated successfully for user: {}", userId);
 
+            if (file == null) {
+                logger.warn("File is null - returning 400 Bad Request");
+                return ResponseEntity.badRequest().build();
+            }
+
             // Validate file
             if (file.isEmpty()) {
                 logger.warn("File is empty - returning 400 Bad Request");
@@ -86,6 +97,7 @@ public class AudioController {
 
             // Upload audio bytes
             logger.info("Calling AudioService.uploadAudio()...");
+            logger.info("Content type before calling audio upload: {}", contentType);
             AudioStore audioStore = audioService.uploadAudio(userId, audioBytes, contentType);
             logger.info("AudioService.uploadAudio() completed successfully");
             logger.info("AudioStore ID: {}", audioStore.getId());
