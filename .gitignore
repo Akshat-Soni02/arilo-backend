@@ -14,6 +14,7 @@ target/
 .sts4-cache
 
 documind-474519-23134803b126.json
+gcs_credentials.json
 
 ### IntelliJ IDEA ###
 .idea
