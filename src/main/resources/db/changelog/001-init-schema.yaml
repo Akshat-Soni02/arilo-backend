@@ -2,6 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: init-schema-v2
       author: akshat
+      validCheckSum: 9:f27aae96b12d007522079e43a67df4e4
 
       changes:
 
@@ -64,7 +65,7 @@ databaseChangeLog:
                   name: storage_url
                   type: text
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: duration_seconds
                   type: int

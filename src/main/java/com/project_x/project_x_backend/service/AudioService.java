@@ -2,18 +2,20 @@ package com.project_x.project_x_backend.service;
 
 import com.project_x.project_x_backend.entity.AudioStore;
 import com.project_x.project_x_backend.repository.AudioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class AudioService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AudioService.class);
 
     @Autowired
     private AudioRepository audioRepository;
@@ -21,35 +23,36 @@ public class AudioService {
     @Autowired
     private GcsStorageService gcsStorageService;
 
-    public AudioStore uploadAudio(UUID userId, byte[] audioBytes, String contentType)
-            throws IOException {
+    public AudioStore uploadAudio(UUID userId, byte[] audioBytes, String contentType) throws IOException {
+        String normalizedContentType = normalizeContentType(contentType);
+        validateAudioData(audioBytes, normalizedContentType);
 
-        validateAudioData(audioBytes, contentType);
-
-        AudioStore audioStore = new AudioStore(
-                userId,
-                null,
-                audioBytes.length,
-                AudioStore.ProcessingStatus.PENDING);
-
+        AudioStore audioStore = new AudioStore(userId, null, audioBytes.length, AudioStore.Status.PROCESSING);
         audioStore = audioRepository.save(audioStore);
 
         try {
-            String gcsUrl = gcsStorageService.uploadAudio(
-                    audioBytes,
-                    audioStore.getId().toString(),
-                    contentType);
-            audioStore.setGcsAudioUrl(gcsUrl);
-            audioStore.setProcessingStatus(AudioStore.ProcessingStatus.PROCESSING);
-
+            String gcsUrl = gcsStorageService.uploadAudio(audioBytes, audioStore.getId().toString(), normalizedContentType);
+            audioStore.setStorageUrl(gcsUrl);
+            audioStore.setStatus(AudioStore.Status.UPLOADED);
             return audioRepository.save(audioStore);
         } catch (Exception e) {
-
-            audioStore.setProcessingStatus(AudioStore.ProcessingStatus.FAILED);
+            audioStore.setStatus(AudioStore.Status.FAILED);
             audioRepository.save(audioStore);
             throw new RuntimeException("Failed to upload audio: " + e.getMessage(), e);
         }
+    }
 
+    private String normalizeContentType(String contentType) {
+        if (contentType == null) {
+            return null;
+        }
+        
+        switch (contentType.toLowerCase()) {
+            case "audio/wave":
+                return "audio/wav";
+            default:
+                return contentType;
+        }
     }
 
     private void validateAudioData(byte[] audioBytes, String contentType) throws IOException {
@@ -64,53 +67,48 @@ public class AudioService {
         if (audioBytes.length > 50 * 1024 * 1024) {
             throw new IllegalArgumentException("Audio data size cannot exceed 50MB");
         }
+
         if (!isValidAudioHeader(audioBytes, contentType)) {
             throw new IllegalArgumentException("Invalid audio data format");
         }
-
     }
 
     private boolean isValidAudioHeader(byte[] audioBytes, String contentType) {
-        if (audioBytes.length < 4)
+        if (audioBytes.length < 4) {
             return false;
+        }
 
         switch (contentType) {
             case "audio/mpeg":
-                // MP3 header check (ID3 tag or frame sync)
                 return (audioBytes[0] == 'I' && audioBytes[1] == 'D' && audioBytes[2] == '3') ||
-                        (audioBytes[0] == (byte) 0xFF && (audioBytes[1] & 0xE0) == 0xE0);
+                       (audioBytes[0] == (byte) 0xFF && (audioBytes[1] & 0xE0) == 0xE0);
 
             case "audio/wav":
             case "audio/x-wav":
-                // WAV header check
                 return audioBytes[0] == 'R' && audioBytes[1] == 'I' &&
-                        audioBytes[2] == 'F' && audioBytes[3] == 'F';
+                       audioBytes[2] == 'F' && audioBytes[3] == 'F';
 
             case "audio/flac":
-                // FLAC header check
                 return audioBytes[0] == 'f' && audioBytes[1] == 'L' &&
-                        audioBytes[2] == 'a' && audioBytes[3] == 'C';
+                       audioBytes[2] == 'a' && audioBytes[3] == 'C';
 
             case "audio/mp4":
             case "audio/x-m4a":
-                // M4A/MP4 might have various headers, basic check for ftyp box
                 return audioBytes.length > 8 &&
-                        audioBytes[4] == 'f' && audioBytes[5] == 't' &&
-                        audioBytes[6] == 'y' && audioBytes[7] == 'p';
+                       audioBytes[4] == 'f' && audioBytes[5] == 't' &&
+                       audioBytes[6] == 'y' && audioBytes[7] == 'p';
 
             default:
-                return true; // Allow other formats for now
+                return true;
         }
     }
 
     private boolean isValidAudioType(String contentType) {
-        return contentType.equals("audio/mpeg") || // mp3
-                contentType.equals("audio/wav") || // wav
-                contentType.equals("audio/x-wav") || // wav
-                contentType.equals("audio/mp4") || // m4a
-                contentType.equals("audio/x-m4a") || // m4a
-                contentType.equals("audio/wave") || // wave
-                contentType.equals("audio/flac"); // flac
+        return contentType.equals("audio/mpeg") ||
+               contentType.equals("audio/wav") ||
+               contentType.equals("audio/x-wav") ||
+               contentType.equals("audio/mp4") ||
+               contentType.equals("audio/x-m4a") ||
+               contentType.equals("audio/flac");
     }
-
 }

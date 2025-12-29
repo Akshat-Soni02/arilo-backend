@@ -21,14 +21,14 @@ public interface AudioRepository extends JpaRepository<AudioStore, UUID> {
     @Query("SELECT a FROM AudioStore a WHERE a.id = :id AND a.deletedAt IS NULL")
     Optional<AudioStore> findActiveAudioById(@Param("id") UUID id);
 
-    @Query("SELECT a FROM AudioStore a WHERE a.userId = :userId AND a.processingStatus = :status AND a.deletedAt IS NULL")
-    List<AudioStore> findByUserIdAndProcessingStatus(@Param("userId") UUID userId, 
-                                                     @Param("status") AudioStore.ProcessingStatus status);
-    
+    @Query("SELECT a FROM AudioStore a WHERE a.userId = :userId AND a.status = :status AND a.deletedAt IS NULL")
+    List<AudioStore> findByUserIdAndStatus(@Param("userId") UUID userId,
+            @Param("status") AudioStore.Status status);
+
     @Query("SELECT COUNT(a) FROM AudioStore a WHERE a.userId = :userId AND a.deletedAt IS NULL")
     Long countByUserId(@Param("userId") UUID userId);
-    
+
     @Query("SELECT SUM(a.durationSeconds) FROM AudioStore a WHERE a.userId = :userId AND a.deletedAt IS NULL")
     Double sumDurationByUserId(@Param("userId") UUID userId);
-    
+
 }
