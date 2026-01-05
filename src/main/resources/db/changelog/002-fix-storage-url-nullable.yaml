@@ -1,9 +1,0 @@
-databaseChangeLog:
-  - changeSet:
-      id: fix-storage-url-nullable
-      author: akshat
-      changes:
-        - dropNotNullConstraint:
-            tableName: audio_store
-            columnName: storage_url
-            columnDataType: text

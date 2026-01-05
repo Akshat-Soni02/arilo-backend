@@ -2,14 +2,30 @@ package com.project_x.project_x_backend.service;
 
 import com.project_x.project_x_backend.entity.AudioStore;
 import com.project_x.project_x_backend.repository.AudioRepository;
+import com.project_x.project_x_backend.utility.DefaultOutputProvider;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.project_x.project_x_backend.dao.ExtractedTagDAO;
+import com.project_x.project_x_backend.dao.ExtractedTaskDAO;
 import com.project_x.project_x_backend.dao.JobDAO;
+import com.project_x.project_x_backend.dto.ExtractedTagDTO.CreateTag;
+import com.project_x.project_x_backend.dto.ExtractedTaskDTO.CreateTask;
+import com.project_x.project_x_backend.dto.SmartNoteDTO.CreateSmartNote;
+import com.project_x.project_x_backend.dto.SttDTO.CreateStt;
 import com.project_x.project_x_backend.dto.jobDTO.CreateJob;
+import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackReq;
 import com.project_x.project_x_backend.entity.Job;
 import com.project_x.project_x_backend.entity.PipelineStage;
 import com.project_x.project_x_backend.dao.PipelineStageDAO;
+import com.project_x.project_x_backend.dao.SmartNoteDAO;
+import com.project_x.project_x_backend.dao.SttDAO;
+import com.project_x.project_x_backend.dao.TagDAO;
+import com.project_x.project_x_backend.enums.JobStatus;
 import com.project_x.project_x_backend.enums.PipelineName;
+import com.project_x.project_x_backend.enums.PipelineStageStatus;
 import com.project_x.project_x_backend.dto.pipelineDTO.CreatePipeline;
+import com.project_x.project_x_backend.dao.AnxietyScoreDAO;
+import com.project_x.project_x_backend.dto.AnxietyScoreDTO.CreateAnxietyScore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,6 +53,27 @@ public class AudioService {
 
     @Autowired
     private PipelineStageDAO pipelineStageDAO;
+
+    @Autowired
+    private DefaultOutputProvider defaultOutputProvider;
+
+    @Autowired
+    private SttDAO sttDAO;
+
+    @Autowired
+    private SmartNoteDAO smartNoteDAO;
+
+    @Autowired
+    private TagDAO tagDAO;
+
+    @Autowired
+    private ExtractedTaskDAO extractedTaskDAO;
+
+    @Autowired
+    private ExtractedTagDAO extractedTagDAO;
+
+    @Autowired
+    private AnxietyScoreDAO anxietyScoreDAO;
 
     @Autowired
     private JobDAO jobDAO;
@@ -88,6 +126,93 @@ public class AudioService {
         } catch (Exception e) {
             // TODO: handle exception
         }
+    }
+
+    public boolean handleEngineCallback(EngineCallbackReq engineCallbackReq) {
+        if (engineCallbackReq.getStatus().equals(PipelineStageStatus.FAILED)) {
+            checkAndMarkJobFailed(engineCallbackReq);
+        } else if (engineCallbackReq.getStatus().equals(PipelineStageStatus.COMPLETED)) {
+            checkAndMarkJobCompleted(engineCallbackReq);
+        }
+
+        updateUserStt(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getStatus(),
+                engineCallbackReq.getOutput());
+        updateUserNote(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getStatus(),
+                engineCallbackReq.getOutput());
+        return engineCallbackReq.getStatus().equals(PipelineStageStatus.COMPLETED);
+    }
+
+    public void checkAndMarkJobFailed(EngineCallbackReq engineCallbackReq) {
+        List<PipelineStage> pipelineStages = pipelineStageDAO.getPipelineStagesByJobId(engineCallbackReq.getJobId());
+
+        boolean allStagesFailed = true;
+        for (PipelineStage stage : pipelineStages) {
+            if (!stage.getStatus().equals(PipelineStageStatus.FAILED)) {
+                allStagesFailed = false;
+                break;
+            }
+        }
+
+        if (allStagesFailed) {
+            jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.FAILED);
+        }
+    }
+
+    public void checkAndMarkJobCompleted(EngineCallbackReq engineCallbackReq) {
+        List<PipelineStage> pipelineStages = pipelineStageDAO.getPipelineStagesByJobId(engineCallbackReq.getJobId());
+
+        boolean allStagesCompleted = true;
+        for (PipelineStage stage : pipelineStages) {
+            if (!stage.getStatus().equals(PipelineStageStatus.FAILED)) {
+                allStagesCompleted = false;
+                break;
+            }
+        }
+
+        if (allStagesCompleted) {
+            jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.COMPLETED);
+        }
+    }
+
+    // @TODO add tags to user tags if tag_count >= 3
+    public void updateUserStt(UUID jobId, UUID userId, PipelineStageStatus status, JsonNode sttResult) {
+        if (status.equals(PipelineStageStatus.FAILED)) {
+            sttResult = defaultOutputProvider.getFallbackStt();
+        }
+
+        // save stt
+        sttDAO.createStt(
+                new CreateStt(jobId, userId, sttResult.get("language").asText(), sttResult.get("stt").asText()));
+
+        // save extracted tags
+        JsonNode tagsNode = sttResult.get("tags");
+        if (tagsNode != null && tagsNode.isArray()) {
+            for (JsonNode tagNode : tagsNode) {
+                extractedTagDAO.addExtractedTag(new CreateTag(jobId, userId, tagNode.asText(), 1));
+            }
+        }
+
+        // save extracted tasks
+        JsonNode tasksNode = sttResult.get("tasks");
+        if (tasksNode != null && tasksNode.isArray()) {
+            for (JsonNode taskNode : tasksNode) {
+                extractedTaskDAO.createExtractedTask(new CreateTask(jobId, userId, taskNode.asText()));
+            }
+        }
+
+        // save anxiety score
+        if (sttResult.has("anxiety_score")) {
+            anxietyScoreDAO
+                    .createAnxietyScore(new CreateAnxietyScore(jobId, userId, sttResult.get("anxiety_score").asInt()));
+        }
+    }
+
+    public void updateUserNote(UUID jobId, UUID userId, PipelineStageStatus status, JsonNode noteResult) {
+        if (status.equals(PipelineStageStatus.FAILED)) {
+            noteResult = defaultOutputProvider.getFallbackSmart();
+        }
+
+        smartNoteDAO.createSmartNote(new CreateSmartNote(jobId, userId, noteResult.get("note").asText(), noteResult));
     }
 
     private String normalizeContentType(String contentType) {
