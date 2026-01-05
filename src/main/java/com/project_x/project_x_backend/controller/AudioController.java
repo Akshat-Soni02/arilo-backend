@@ -26,7 +26,7 @@ public class AudioController {
 
     private static final Logger logger = LoggerFactory.getLogger(AudioController.class);
     private static final List<String> SUPPORTED_AUDIO_TYPES = Arrays.asList(
-            "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", 
+            "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4",
             "audio/x-m4a", "audio/flac", "audio/wave");
 
     @Autowired
@@ -34,11 +34,6 @@ public class AudioController {
 
     @Autowired
     private JwtService jwtService;
-
-    @GetMapping("/test")
-    public String testAudio() {
-        return "AudioController is running";
-    }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AudioUploadResponse> uploadAudioFile(
@@ -79,8 +74,11 @@ public class AudioController {
         }
     }
 
-    @GetMapping("/test-auth")
-    public ResponseEntity<String> testAuth(@RequestHeader("Authorization") String authorization) {
+    @PostMapping("/engine-processed-output")
+    public
+
+    @GetMapping("/test-auth") public ResponseEntity<String> testAuth(
+            @RequestHeader("Authorization") String authorization) {
         try {
             UUID userId = extractUserIdFromToken(authorization);
             if (userId == null) {

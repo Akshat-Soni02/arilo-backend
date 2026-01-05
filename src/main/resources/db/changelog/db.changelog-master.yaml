@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/001-init-schema.yaml
   - include:
       file: db/changelog/002-fix-storage-url-nullable.yaml
+  - include:
+      file: db/changelog/003-add-pipeline-stages.yaml
