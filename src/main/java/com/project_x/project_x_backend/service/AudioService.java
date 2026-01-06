@@ -1,7 +1,7 @@
 package com.project_x.project_x_backend.service;
 
-import com.project_x.project_x_backend.entity.AudioStore;
-import com.project_x.project_x_backend.repository.AudioRepository;
+import com.project_x.project_x_backend.entity.Note;
+import com.project_x.project_x_backend.repository.NoteRepository;
 import com.project_x.project_x_backend.utility.DefaultOutputProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,7 +46,7 @@ public class AudioService {
     private static final Logger logger = LoggerFactory.getLogger(AudioService.class);
 
     @Autowired
-    private AudioRepository audioRepository;
+    private NoteRepository noteRepository;
 
     @Autowired
     private GcsStorageService gcsStorageService;
@@ -64,9 +64,6 @@ public class AudioService {
     private SmartNoteDAO smartNoteDAO;
 
     @Autowired
-    private TagDAO tagDAO;
-
-    @Autowired
     private ExtractedTaskDAO extractedTaskDAO;
 
     @Autowired
@@ -78,38 +75,41 @@ public class AudioService {
     @Autowired
     private JobDAO jobDAO;
 
-    public AudioStore uploadAudio(UUID userId, byte[] audioBytes, String contentType) throws IOException {
+    @Autowired
+    private PubSubService pubSubService;
+
+    public Note uploadAudio(UUID userId, byte[] audioBytes, String contentType) throws IOException {
         String normalizedContentType = normalizeContentType(contentType);
         validateAudioData(audioBytes, normalizedContentType);
 
-        AudioStore audioStore = new AudioStore(userId, null, audioBytes.length, AudioStore.Status.PROCESSING);
-        audioStore = audioRepository.save(audioStore);
+        // Default values for noteType and textContent as they are not provided in the
+        // current upload flow
+        Note note = new Note(userId, null, audioBytes.length, Note.Status.PROCESSING, "AUDIO", "");
+        note = noteRepository.save(note);
 
         try {
-            String gcsUrl = gcsStorageService.uploadAudio(audioBytes, audioStore.getId().toString(),
+            String gcsUrl = gcsStorageService.uploadAudio(audioBytes, note.getId().toString(),
                     normalizedContentType);
-            audioStore.setStorageUrl(gcsUrl);
-            audioStore.setStatus(AudioStore.Status.UPLOADED);
-            return audioRepository.save(audioStore);
+            note.setStorageUrl(gcsUrl);
+            note.setStatus(Note.Status.UPLOADED);
+            return noteRepository.save(note);
         } catch (Exception e) {
-            audioStore.setStatus(AudioStore.Status.FAILED);
-            audioRepository.save(audioStore);
+            note.setStatus(Note.Status.FAILED);
+            noteRepository.save(note);
             throw new RuntimeException("Failed to upload audio: " + e.getMessage(), e);
         }
     }
 
-    public void startEngineJob(UUID userId, UUID noteId, UUID audioId, String gcsUrl, String location, String timestamp,
+    public void startEngineJob(UUID userId, UUID noteId, String gcsUrl, String location, String timestamp,
             String inputType) {
         // create job
         // create pipeline stage row for each stage
         // add job to queue
 
         try {
-            Job job = jobDAO.createJob(new CreateJob(audioId, userId));
-            PipelineStage stage1 = pipelineStageDAO
-                    .createPipelineStage(new CreatePipeline(job.getId(), PipelineName.STT));
-            PipelineStage stage2 = pipelineStageDAO
-                    .createPipelineStage(new CreatePipeline(job.getId(), PipelineName.SMART));
+            Job job = jobDAO.createJob(new CreateJob(userId, noteId));
+            pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.STT));
+            pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.SMART));
 
             ObjectMapper mapper = new ObjectMapper();
 
@@ -122,9 +122,9 @@ public class AudioService {
             pubsubPayload.put("input_type", "audio/wav");
 
             String jsonPayload = mapper.writeValueAsString(pubsubPayload);
-            // enqueue job here
+            pubSubService.publishMessage(jsonPayload);
         } catch (Exception e) {
-            // TODO: handle exception
+            logger.error("Failed to start engine job for note {}: {}", noteId, e.getMessage());
         }
     }
 

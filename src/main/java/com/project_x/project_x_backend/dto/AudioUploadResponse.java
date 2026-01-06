@@ -1,45 +1,42 @@
 package com.project_x.project_x_backend.dto;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import com.project_x.project_x_backend.entity.AudioStore;
+import com.project_x.project_x_backend.entity.Note;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public class AudioUploadResponse {
-    private UUID audioId;
+    private UUID noteId;
     private int durationSeconds;
     private String storageUrl;
-    private AudioStore.Status status;
+    private Note.Status status;
     private LocalDateTime uploadedAt;
 
     public AudioUploadResponse() {
     }
 
-    public AudioUploadResponse(AudioStore audioStore) {
-        this.audioId = audioStore.getId();
-        this.durationSeconds = audioStore.getDurationSeconds();
-        this.storageUrl = audioStore.getStorageUrl();
-        this.status = audioStore.getStatus();
-        this.uploadedAt = audioStore.getCreatedAt();
+    public AudioUploadResponse(Note note) {
+        this.noteId = note.getId();
+        this.durationSeconds = note.getDurationSeconds();
+        this.storageUrl = note.getStorageUrl();
+        this.status = note.getStatus();
+        this.uploadedAt = note.getCreatedAt();
     }
 
-    public UUID getAudioId() {
-        return audioId;
+    public UUID getNoteId() {
+        return noteId;
     }
 
-    public void setAudioId(UUID audioId) {
-        this.audioId = audioId;
+    public void setNoteId(UUID noteId) {
+        this.noteId = noteId;
     }
 
-    public AudioStore.Status getStatus() {
+    public Note.Status getStatus() {
         return status;
     }
 
-    public void setStatus(AudioStore.Status status) {
+    public void setStatus(Note.Status status) {
         this.status = status;
     }
 

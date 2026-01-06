@@ -2,9 +2,9 @@ package com.project_x.project_x_backend.controller;
 
 import com.project_x.project_x_backend.dto.AudioUploadResponse;
 import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackRes;
-import com.project_x.project_x_backend.entity.AudioStore;
+import com.project_x.project_x_backend.entity.Note;
 import com.project_x.project_x_backend.service.AudioService;
-import com.project_x.project_x_backend.service.JwtService;
+import com.project_x.project_x_backend.service.AuthService;
 
 import jakarta.validation.Valid;
 
@@ -26,10 +26,9 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/audio")
-@CrossOrigin(origins = { "http://localhost:5173" })
 public class AudioController {
-
     private static final Logger logger = LoggerFactory.getLogger(AudioController.class);
+
     private static final List<String> SUPPORTED_AUDIO_TYPES = Arrays.asList(
             "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4",
             "audio/x-m4a", "audio/flac", "audio/wave");
@@ -38,7 +37,7 @@ public class AudioController {
     private AudioService audioService;
 
     @Autowired
-    private JwtService jwtService;
+    private AuthService authService;
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AudioUploadResponse> uploadAudioFile(
@@ -46,7 +45,7 @@ public class AudioController {
             @RequestParam("file") MultipartFile file) {
 
         try {
-            UUID userId = extractUserIdFromToken(authorization);
+            UUID userId = authService.extractUserIdFromToken(authorization);
             if (userId == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
@@ -62,8 +61,8 @@ public class AudioController {
             }
 
             byte[] audioBytes = file.getBytes();
-            AudioStore audioStore = audioService.uploadAudio(userId, audioBytes, contentType);
-            AudioUploadResponse response = new AudioUploadResponse(audioStore);
+            Note note = audioService.uploadAudio(userId, audioBytes, contentType);
+            AudioUploadResponse response = new AudioUploadResponse(note);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
@@ -101,7 +100,7 @@ public class AudioController {
     public ResponseEntity<String> testAuth(
             @RequestHeader("Authorization") String authorization) {
         try {
-            UUID userId = extractUserIdFromToken(authorization);
+            UUID userId = authService.extractUserIdFromToken(authorization);
             if (userId == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("JWT validation failed");
             }
@@ -117,25 +116,5 @@ public class AudioController {
         logger.error("File size exceeded: {}", exc.getMessage());
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
                 .body("File size exceeds maximum allowed size");
-    }
-
-    private UUID extractUserIdFromToken(String authorization) {
-        try {
-            if (authorization == null || !authorization.startsWith("Bearer ")) {
-                logger.warn("Invalid authorization header");
-                return null;
-            }
-
-            String token = authorization.substring(7);
-            if (!jwtService.isTokenValid(token)) {
-                logger.warn("Invalid JWT token");
-                return null;
-            }
-
-            return jwtService.extractUserId(token);
-        } catch (Exception e) {
-            logger.error("Error extracting user ID: {}", e.getMessage());
-            return null;
-        }
     }
 }

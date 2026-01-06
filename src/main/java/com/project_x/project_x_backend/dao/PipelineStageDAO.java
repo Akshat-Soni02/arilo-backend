@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.project_x.project_x_backend.repository.PipelineStageRepository;
 import com.project_x.project_x_backend.entity.PipelineStage;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class PipelineStageDAO {
     @Autowired
     private PipelineStageRepository pipelineStageRepository;

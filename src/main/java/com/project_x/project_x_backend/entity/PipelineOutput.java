@@ -12,6 +12,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.Data;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Data
 @Entity
 public class PipelineOutput {
@@ -25,6 +28,7 @@ public class PipelineOutput {
     @Column(name = "content")
     private String content;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "data", columnDefinition = "jsonb")
     private JsonNode data;
 

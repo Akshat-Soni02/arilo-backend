@@ -3,18 +3,6 @@ databaseChangeLog:
       id: init-schema-v2
       author: akshat
       changes:
-        
-        ##################################################
-        # CUSTOM TYPES
-        ##################################################
-        - sql:
-            dbms: postgresql
-            sql: |
-              CREATE TYPE pipeline_name_type AS ENUM ('stt', 'smart');
-              CREATE TYPE pipeline_status_type AS ENUM ('pending', 'processing', 'completed', 'failed');
-            rollback:
-              DROP TYPE pipeline_name_type;
-              DROP TYPE pipeline_status_type;
 
         ##################################################
         # USERS
@@ -25,6 +13,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -47,13 +36,15 @@ databaseChangeLog:
                   type: text
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
               - column:
                   name: updated_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
               - column:
                   name: deleted_at
-                  type: timestamp
+                  type: timestamptz
 
         ##################################################
         # AUDIO STORE
@@ -64,6 +55,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -74,23 +66,23 @@ databaseChangeLog:
               - column:
                   name: storage_url
                   type: text
-                  constraints:
-                    nullable: true
               - column:
                   name: duration_seconds
-                  type: int
+                  type: integer
               - column:
                   name: status
                   type: varchar(20)
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
               - column:
                   name: updated_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
               - column:
                   name: deleted_at
-                  type: timestamp
+                  type: timestamptz
 
         - addForeignKeyConstraint:
             baseTableName: audio_store
@@ -109,6 +101,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -129,10 +122,12 @@ databaseChangeLog:
                   type: text
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
               - column:
                   name: updated_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
 
         - addForeignKeyConstraint:
             baseTableName: jobs
@@ -162,7 +157,6 @@ databaseChangeLog:
                   defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
-                    nullable: false
               - column:
                   name: job_id
                   type: uuid
@@ -170,13 +164,12 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: pipeline_name
-                  type: pipeline_name_type
+                  type: varchar(32)
                   constraints:
                     nullable: false
               - column:
                   name: status
-                  type: pipeline_status_type
-                  defaultValue: pending
+                  type: varchar(32)
                   constraints:
                     nullable: false
               - column:
@@ -187,16 +180,16 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: last_heartbeat
-                  type: timestamp
+                  type: timestamptz
               - column:
                   name: error_message
                   type: text
               - column:
                   name: started_at
-                  type: timestamp
+                  type: timestamptz
               - column:
                   name: completed_at
-                  type: timestamp
+                  type: timestamptz
 
         - addUniqueConstraint:
             tableName: pipeline_stages
@@ -223,7 +216,6 @@ databaseChangeLog:
                   defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
-                    nullable: false
               - column:
                   name: pipeline_stage_id
                   type: uuid
@@ -243,11 +235,11 @@ databaseChangeLog:
                   type: integer
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
                   defaultValueComputed: now()
               - column:
                   name: deleted_at
-                  type: timestamp
+                  type: timestamptz
 
         - addForeignKeyConstraint:
             baseTableName: pipeline_outputs
@@ -266,6 +258,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -290,10 +283,12 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
               - column:
                   name: updated_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
 
         - addForeignKeyConstraint:
             baseTableName: stt
@@ -312,6 +307,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -331,10 +327,12 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
               - column:
                   name: updated_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
 
         - addForeignKeyConstraint:
             baseTableName: extracted_tasks
@@ -353,6 +351,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -378,7 +377,8 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
 
         - addForeignKeyConstraint:
             baseTableName: extracted_tags
@@ -397,6 +397,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -435,6 +436,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -455,7 +457,8 @@ databaseChangeLog:
                   type: jsonb
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
 
         - addForeignKeyConstraint:
             baseTableName: smart_notes
@@ -474,6 +477,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -491,10 +495,12 @@ databaseChangeLog:
                   type: text
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
               - column:
                   name: updated_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
 
         - addForeignKeyConstraint:
             baseTableName: tags
@@ -508,11 +514,12 @@ databaseChangeLog:
         # USAGE LOGS
         ##################################################
         - createTable:
-            tableName: usage_logs
+            tableName: llm_metrics
             columns:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
               - column:
@@ -536,55 +543,71 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: input_token
-                  type: int
+                  name: llm_call
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
               - column:
-                  name: output_token
-                  type: int
+                  name: input_tokens
+                  type: integer
               - column:
-                  name: thought_token
-                  type: int
+                  name: prompt_tokens
+                  type: integer
+              - column:
+                  name: total_input_tokens
+                  type: integer
+              - column:
+                  name: output_tokens
+                  type: integer
+              - column:
+                  name: thought_tokens
+                  type: integer
               - column:
                   name: confidence_score
-                  type: int
+                  type: double precision
+              - column:
+                  name: elapsed_time
+                  type: double precision
               - column:
                   name: model
                   type: varchar(100)
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
               - column:
                   name: updated_at
-                  type: timestamp
+                  type: timestamptz
+                  defaultValueComputed: now()
 
         - addForeignKeyConstraint:
-            baseTableName: usage_logs
+            baseTableName: llm_metrics
             baseColumnNames: user_id
             referencedTableName: users
             referencedColumnNames: id
-            constraintName: fk_usage_user
+            constraintName: fk_llm_user
             onDelete: CASCADE
 
         - addForeignKeyConstraint:
-            baseTableName: usage_logs
+            baseTableName: llm_metrics
             baseColumnNames: job_id
             referencedTableName: jobs
             referencedColumnNames: id
-            constraintName: fk_usage_job
+            constraintName: fk_llm_job
             onDelete: CASCADE
 
         - addForeignKeyConstraint:
-            baseTableName: usage_logs
+            baseTableName: llm_metrics
             baseColumnNames: pipeline_stage_id
             referencedTableName: pipeline_stages
             referencedColumnNames: id
-            constraintName: fk_usage_stage
+            constraintName: fk_llm_stage
             onDelete: CASCADE
 
         - addForeignKeyConstraint:
-            baseTableName: usage_logs
+            baseTableName: llm_metrics
             baseColumnNames: pipeline_output_id
             referencedTableName: pipeline_outputs
             referencedColumnNames: id
-            constraintName: fk_usage_output
+            constraintName: fk_llm_output
             onDelete: CASCADE

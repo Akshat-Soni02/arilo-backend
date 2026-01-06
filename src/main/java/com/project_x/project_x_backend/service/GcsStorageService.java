@@ -56,7 +56,7 @@ public class GcsStorageService {
         logger.info("GCS Storage initialized successfully");
     }
 
-    public String uploadAudio(byte[] audioData, String audioId, String contentType) throws IOException {
+    public String uploadAudio(byte[] audioData, String noteId, String contentType) throws IOException {
         if (audioData == null || audioData.length == 0) {
             throw new IllegalArgumentException("Audio data cannot be null or empty");
         }
@@ -64,7 +64,7 @@ public class GcsStorageService {
         try {
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String extension = getExtensionFromContentType(contentType);
-            String fileName = String.format("audio/%s_%s.%s", audioId, timestamp, extension);
+            String fileName = String.format("audio/%s_%s.%s", noteId, timestamp, extension);
 
             BlobId blobId = BlobId.of(bucketName, fileName);
             BlobInfo blobInfo = BlobInfo.newBuilder(blobId)

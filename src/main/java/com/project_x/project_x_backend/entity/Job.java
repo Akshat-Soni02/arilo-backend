@@ -33,8 +33,8 @@ public class Job {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "audio_id", nullable = false)
-    private UUID audioId;
+    @Column(name = "note_id", nullable = false)
+    private UUID noteId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

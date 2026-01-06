@@ -31,6 +31,7 @@ public class PipelineStage {
     @Column(name = "job_id", nullable = false)
     private UUID jobId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "pipeline_name", nullable = false)
     private PipelineName pipelineName;
 

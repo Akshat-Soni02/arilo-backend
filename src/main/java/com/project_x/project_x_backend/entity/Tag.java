@@ -24,7 +24,7 @@ public class Tag {
     @Column(nullable = false)
     private String name;
 
-    @Column(columnDefinition = "tag")
+    @Column(name = "tag")
     private String tag;
 
     @Column(name = "created_at")

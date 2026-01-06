@@ -9,7 +9,6 @@ import lombok.Data;
 
 import java.util.UUID;
 
-@Component
 @Data
 @AllArgsConstructor
 public class CreateSmartNote {

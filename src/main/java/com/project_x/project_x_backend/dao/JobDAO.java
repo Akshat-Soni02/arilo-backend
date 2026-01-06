@@ -4,14 +4,14 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Component;
 
 import com.project_x.project_x_backend.dto.jobDTO.CreateJob;
 import com.project_x.project_x_backend.entity.Job;
 import com.project_x.project_x_backend.enums.JobStatus;
 import com.project_x.project_x_backend.repository.JobRepository;
 
-@Repository
+@Component
 public class JobDAO {
     @Autowired
     private JobRepository jobRepository;
@@ -19,7 +19,7 @@ public class JobDAO {
     public Job createJob(CreateJob job) {
         Job jobEntity = new Job();
         jobEntity.setUserId(job.getUserId());
-        jobEntity.setAudioId(job.getAudioId());
+        jobEntity.setNoteId(job.getNoteId());
         jobEntity.setStatus(JobStatus.PROCESSING);
         return jobRepository.save(jobEntity);
     }

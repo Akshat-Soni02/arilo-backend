@@ -9,5 +9,5 @@ import lombok.Data;
 @AllArgsConstructor
 public class CreateJob {
     private UUID userId;
-    private UUID audioId;
+    private UUID noteId;
 }
