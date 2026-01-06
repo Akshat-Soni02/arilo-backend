@@ -1,9 +1,14 @@
 package com.project_x.project_x_backend.controller;
 
 import com.project_x.project_x_backend.dto.AudioUploadResponse;
+import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackRes;
 import com.project_x.project_x_backend.entity.AudioStore;
 import com.project_x.project_x_backend.service.AudioService;
 import com.project_x.project_x_backend.service.JwtService;
+
+import jakarta.validation.Valid;
+
+import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +31,7 @@ public class AudioController {
 
     private static final Logger logger = LoggerFactory.getLogger(AudioController.class);
     private static final List<String> SUPPORTED_AUDIO_TYPES = Arrays.asList(
-            "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", 
+            "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4",
             "audio/x-m4a", "audio/flac", "audio/wave");
 
     @Autowired
@@ -34,11 +39,6 @@ public class AudioController {
 
     @Autowired
     private JwtService jwtService;
-
-    @GetMapping("/test")
-    public String testAudio() {
-        return "AudioController is running";
-    }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AudioUploadResponse> uploadAudioFile(
@@ -79,8 +79,27 @@ public class AudioController {
         }
     }
 
+    @PostMapping("/engine/callback")
+    public ResponseEntity<EngineCallbackRes> engineCallback(@RequestBody @Valid EngineCallbackReq request) {
+        // if req status is failed we check all the stages and if all of them are failed
+        // then only we mark the job failed
+        // similiarly if all the stages are completed then we mark job completed
+        // also if the stage is completed, we update the output in the db
+
+        try {
+            boolean jobCompleted = audioService.handleEngineCallback(request);
+            if (!jobCompleted)
+                logger.warn("Job failed by engine");
+            return ResponseEntity.ok(new EngineCallbackRes("ok"));
+        } catch (Exception e) {
+            logger.error("Error in engine callback: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping("/test-auth")
-    public ResponseEntity<String> testAuth(@RequestHeader("Authorization") String authorization) {
+    public ResponseEntity<String> testAuth(
+            @RequestHeader("Authorization") String authorization) {
         try {
             UUID userId = extractUserIdFromToken(authorization);
             if (userId == null) {

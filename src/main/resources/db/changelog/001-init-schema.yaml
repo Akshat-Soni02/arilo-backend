@@ -2,9 +2,19 @@ databaseChangeLog:
   - changeSet:
       id: init-schema-v2
       author: akshat
-      validCheckSum: 9:f27aae96b12d007522079e43a67df4e4
-
       changes:
+        
+        ##################################################
+        # CUSTOM TYPES
+        ##################################################
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE TYPE pipeline_name_type AS ENUM ('stt', 'smart');
+              CREATE TYPE pipeline_status_type AS ENUM ('pending', 'processing', 'completed', 'failed');
+            rollback:
+              DROP TYPE pipeline_name_type;
+              DROP TYPE pipeline_status_type;
 
         ##################################################
         # USERS
@@ -115,14 +125,8 @@ databaseChangeLog:
                   name: status
                   type: varchar(20)
               - column:
-                  name: error_code
-                  type: varchar(100)
-              - column:
                   name: error_message
                   type: text
-              - column:
-                  name: retry_count
-                  type: int
               - column:
                   name: created_at
                   type: timestamp
@@ -155,36 +159,49 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
+                    nullable: false
               - column:
                   name: job_id
                   type: uuid
                   constraints:
                     nullable: false
               - column:
-                  name: audio_id
-                  type: uuid
+                  name: pipeline_name
+                  type: pipeline_name_type
                   constraints:
                     nullable: false
               - column:
-                  name: pipeline_name
-                  type: varchar(20)
-              - column:
-                  name: model
-                  type: varchar(100)
-              - column:
                   name: status
-                  type: varchar(20)
+                  type: pipeline_status_type
+                  defaultValue: pending
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempt_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_heartbeat
+                  type: timestamp
+              - column:
+                  name: error_message
+                  type: text
               - column:
                   name: started_at
                   type: timestamp
               - column:
                   name: completed_at
                   type: timestamp
-              - column:
-                  name: error_message
-                  type: text
+
+        - addUniqueConstraint:
+            tableName: pipeline_stages
+            columnNames: job_id, pipeline_name
+            constraintName: pipeline_stages_job_pipeline_uniq
 
         - addForeignKeyConstraint:
             baseTableName: pipeline_stages
@@ -192,14 +209,6 @@ databaseChangeLog:
             referencedTableName: jobs
             referencedColumnNames: id
             constraintName: fk_stages_job
-            onDelete: CASCADE
-
-        - addForeignKeyConstraint:
-            baseTableName: pipeline_stages
-            baseColumnNames: audio_id
-            referencedTableName: audio_store
-            referencedColumnNames: id
-            constraintName: fk_stages_audio
             onDelete: CASCADE
 
         ##################################################
@@ -211,16 +220,15 @@ databaseChangeLog:
               - column:
                   name: id
                   type: uuid
+                  defaultValueComputed: gen_random_uuid()
                   constraints:
                     primaryKey: true
+                    nullable: false
               - column:
                   name: pipeline_stage_id
                   type: uuid
                   constraints:
                     nullable: false
-              - column:
-                  name: output_type
-                  type: varchar(30)
               - column:
                   name: content
                   type: text
@@ -229,13 +237,14 @@ databaseChangeLog:
                   type: jsonb
               - column:
                   name: start_second
-                  type: int
+                  type: integer
               - column:
                   name: end_second
-                  type: int
+                  type: integer
               - column:
                   name: created_at
                   type: timestamp
+                  defaultValueComputed: now()
               - column:
                   name: deleted_at
                   type: timestamp
@@ -260,7 +269,12 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
               - column:
-                  name: pipeline_output_id
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: job_id
                   type: uuid
                   constraints:
                     nullable: false
@@ -270,7 +284,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: text
+                  name: stt
                   type: text
                   constraints:
                     nullable: false
@@ -283,10 +297,10 @@ databaseChangeLog:
 
         - addForeignKeyConstraint:
             baseTableName: stt
-            baseColumnNames: pipeline_output_id
-            referencedTableName: pipeline_outputs
+            baseColumnNames: job_id
+            referencedTableName: jobs
             referencedColumnNames: id
-            constraintName: fk_stt_output
+            constraintName: fk_stt_job
             onDelete: CASCADE
 
         ##################################################
@@ -301,12 +315,17 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
               - column:
-                  name: pipeline_output_id
+                  name: user_id
                   type: uuid
                   constraints:
                     nullable: false
               - column:
-                  name: text
+                  name: job_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: task
                   type: text
                   constraints:
                     nullable: false
@@ -319,10 +338,10 @@ databaseChangeLog:
 
         - addForeignKeyConstraint:
             baseTableName: extracted_tasks
-            baseColumnNames: pipeline_output_id
-            referencedTableName: pipeline_outputs
+            baseColumnNames: job_id
+            referencedTableName: jobs
             referencedColumnNames: id
-            constraintName: fk_tasks_output
+            constraintName: fk_tasks_job
             onDelete: CASCADE
 
         ##################################################
@@ -337,7 +356,12 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
               - column:
-                  name: pipeline_output_id
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: job_id
                   type: uuid
                   constraints:
                     nullable: false
@@ -347,15 +371,21 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: tag_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
                   name: created_at
                   type: timestamp
 
         - addForeignKeyConstraint:
             baseTableName: extracted_tags
-            baseColumnNames: pipeline_output_id
-            referencedTableName: pipeline_outputs
+            baseColumnNames: job_id
+            referencedTableName: jobs
             referencedColumnNames: id
-            constraintName: fk_tags_output
+            constraintName: fk_tags_job
             onDelete: CASCADE
 
         ##################################################
@@ -370,7 +400,12 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
               - column:
-                  name: pipeline_output_id
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: job_id
                   type: uuid
                   constraints:
                     nullable: false
@@ -385,10 +420,10 @@ databaseChangeLog:
 
         - addForeignKeyConstraint:
             baseTableName: anxiety_scores
-            baseColumnNames: pipeline_output_id
-            referencedTableName: pipeline_outputs
+            baseColumnNames: job_id
+            referencedTableName: jobs
             referencedColumnNames: id
-            constraintName: fk_anxiety_output
+            constraintName: fk_anxiety_job
             onDelete: CASCADE
 
         ##################################################
@@ -403,12 +438,17 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
               - column:
-                  name: pipeline_output_id
+                  name: user_id
                   type: uuid
                   constraints:
                     nullable: false
               - column:
-                  name: content
+                  name: job_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: note
                   type: text
               - column:
                   name: metadata
@@ -419,10 +459,10 @@ databaseChangeLog:
 
         - addForeignKeyConstraint:
             baseTableName: smart_notes
-            baseColumnNames: pipeline_output_id
-            referencedTableName: pipeline_outputs
+            baseColumnNames: job_id
+            referencedTableName: jobs
             referencedColumnNames: id
-            constraintName: fk_smart_output
+            constraintName: fk_smart_job
             onDelete: CASCADE
 
         ##################################################
