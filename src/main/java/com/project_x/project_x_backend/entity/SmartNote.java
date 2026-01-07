@@ -26,8 +26,12 @@ public class SmartNote {
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
-    @Column(columnDefinition = "note")
-    private String note;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "note_id")
+    private Note note;
+
+    @Column(name = "note", columnDefinition = "text")
+    private String noteContent;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")

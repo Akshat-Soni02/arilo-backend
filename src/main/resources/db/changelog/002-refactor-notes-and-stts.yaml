@@ -25,15 +25,33 @@ databaseChangeLog:
             oldColumnName: audio_id
             newColumnName: note_id
             columnDataType: uuid
-        - renameForeignKeyConstraint:
+        - dropForeignKeyConstraint:
             baseTableName: jobs
             constraintName: fk_jobs_audio
-            newConstraintName: fk_jobs_note
-        - renameForeignKeyConstraint:
+        - addForeignKeyConstraint:
+            baseTableName: jobs
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_jobs_note
+            onDelete: CASCADE
+        - dropForeignKeyConstraint:
             baseTableName: notes
             constraintName: fk_audio_user
-            newConstraintName: fk_note_user
-        - renameForeignKeyConstraint:
+        - addForeignKeyConstraint:
+            baseTableName: notes
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_note_user
+            onDelete: CASCADE
+        - dropForeignKeyConstraint:
             baseTableName: stts
             constraintName: fk_stt_job
-            newConstraintName: fk_stts_job
+        - addForeignKeyConstraint:
+            baseTableName: stts
+            baseColumnNames: job_id
+            referencedTableName: jobs
+            referencedColumnNames: id
+            constraintName: fk_stts_job
+            onDelete: CASCADE

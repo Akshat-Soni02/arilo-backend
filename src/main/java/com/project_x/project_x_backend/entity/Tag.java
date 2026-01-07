@@ -3,6 +3,8 @@ package com.project_x.project_x_backend.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import com.project_x.project_x_backend.enums.TagSource;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -24,8 +26,12 @@ public class Tag {
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "tag")
-    private String tag;
+    @Column(name = "description")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "created_by", nullable = false)
+    private TagSource createdBy;
 
     @Column(name = "created_at")
     private Instant createdAt;

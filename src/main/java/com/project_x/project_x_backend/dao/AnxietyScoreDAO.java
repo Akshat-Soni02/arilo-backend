@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.project_x.project_x_backend.dto.AnxietyScoreDTO.CreateAnxietyScore;
 import com.project_x.project_x_backend.entity.AnxietyScore;
+import com.project_x.project_x_backend.repository.NoteRepository;
 import com.project_x.project_x_backend.repository.AnxietyScoreRepository;
 import com.project_x.project_x_backend.repository.JobRepository;
 import com.project_x.project_x_backend.repository.UserRepository;
@@ -23,10 +24,15 @@ public class AnxietyScoreDAO {
     @Autowired
     private JobRepository jobRepository;
 
+    @Autowired
+    private NoteRepository noteRepository;
+
     public void createAnxietyScore(CreateAnxietyScore createAnxietyScore) {
         AnxietyScore anxietyScore = new AnxietyScore();
         anxietyScore.setUser(userRepository.getReferenceById(createAnxietyScore.getUserId()));
-        anxietyScore.setJob(jobRepository.getReferenceById(createAnxietyScore.getJobId()));
+        com.project_x.project_x_backend.entity.Job job = jobRepository.getReferenceById(createAnxietyScore.getJobId());
+        anxietyScore.setJob(job);
+        anxietyScore.setNote(noteRepository.getReferenceById(job.getNoteId()));
         anxietyScore.setAnxietyScore(createAnxietyScore.getAnxietyScore());
         anxietyScore.setCreatedAt(Instant.now());
         anxietyScoreRepository.save(anxietyScore);

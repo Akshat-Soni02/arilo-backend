@@ -3,7 +3,7 @@ package com.project_x.project_x_backend.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.util.UUID;
-import java.sql.Timestamp;
+import java.time.Instant;
 
 @Entity
 @Table(name = "llm_metrics")
@@ -57,8 +57,8 @@ public class LlmMetric {
     private String model;
 
     @Column(name = "created_at")
-    private Timestamp createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at")
-    private Timestamp updatedAt;
+    private Instant updatedAt;
 }

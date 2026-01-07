@@ -21,8 +21,10 @@ import com.project_x.project_x_backend.dao.SmartNoteDAO;
 import com.project_x.project_x_backend.dao.SttDAO;
 import com.project_x.project_x_backend.dao.TagDAO;
 import com.project_x.project_x_backend.enums.JobStatus;
+import com.project_x.project_x_backend.enums.NoteStatus;
 import com.project_x.project_x_backend.enums.PipelineName;
 import com.project_x.project_x_backend.enums.PipelineStageStatus;
+import com.project_x.project_x_backend.enums.TaskStatus;
 import com.project_x.project_x_backend.dto.pipelineDTO.CreatePipeline;
 import com.project_x.project_x_backend.dao.AnxietyScoreDAO;
 import com.project_x.project_x_backend.dto.AnxietyScoreDTO.CreateAnxietyScore;
@@ -64,6 +66,9 @@ public class AudioService {
     private SmartNoteDAO smartNoteDAO;
 
     @Autowired
+    private TagDAO tagDAO;
+
+    @Autowired
     private ExtractedTaskDAO extractedTaskDAO;
 
     @Autowired
@@ -84,17 +89,19 @@ public class AudioService {
 
         // Default values for noteType and textContent as they are not provided in the
         // current upload flow
-        Note note = new Note(userId, null, audioBytes.length, Note.Status.PROCESSING, "AUDIO", "");
+        Note note = new Note(userId, null, audioBytes.length, NoteStatus.PROCESSING, "AUDIO", "");
         note = noteRepository.save(note);
 
         try {
             String gcsUrl = gcsStorageService.uploadAudio(audioBytes, note.getId().toString(),
                     normalizedContentType);
             note.setStorageUrl(gcsUrl);
-            note.setStatus(Note.Status.UPLOADED);
-            return noteRepository.save(note);
+            note.setStatus(NoteStatus.UPLOADED);
+            Note savedNote = noteRepository.save(note);
+            startEngineJob(userId, note.getId(), gcsUrl, "", "", "audio/wav");
+            return savedNote;
         } catch (Exception e) {
-            note.setStatus(Note.Status.FAILED);
+            note.setStatus(NoteStatus.FAILED);
             noteRepository.save(note);
             throw new RuntimeException("Failed to upload audio: " + e.getMessage(), e);
         }
@@ -196,7 +203,8 @@ public class AudioService {
         JsonNode tasksNode = sttResult.get("tasks");
         if (tasksNode != null && tasksNode.isArray()) {
             for (JsonNode taskNode : tasksNode) {
-                extractedTaskDAO.createExtractedTask(new CreateTask(jobId, userId, taskNode.asText()));
+                extractedTaskDAO
+                        .createExtractedTask(new CreateTask(jobId, userId, taskNode.asText(), TaskStatus.IN_PROGRESS));
             }
         }
 

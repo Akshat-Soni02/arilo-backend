@@ -24,10 +24,11 @@ public class TagDAO {
         Tag tag = new Tag();
         tag.setId(UUID.randomUUID());
         tag.setUser(userRepository.getReferenceById(tagDTO.getUserId()));
-        tag.setName(tagDTO.getTag());
-        tag.setTag(tagDTO.getTag());
+        tag.setName(tagDTO.getName());
+        tag.setDescription(tagDTO.getDescription());
         tag.setCreatedAt(Instant.now());
         tag.setUpdatedAt(Instant.now());
+        tag.setCreatedBy(tagDTO.getCreatedBy());
         tagRepository.save(tag);
     }
 }

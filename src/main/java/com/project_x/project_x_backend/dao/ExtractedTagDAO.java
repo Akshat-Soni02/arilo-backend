@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.project_x.project_x_backend.dto.ExtractedTagDTO.CreateTag;
 import com.project_x.project_x_backend.entity.ExtractedTag;
+import com.project_x.project_x_backend.repository.NoteRepository;
 import com.project_x.project_x_backend.repository.ExtractedTagRepository;
 import com.project_x.project_x_backend.repository.JobRepository;
 import com.project_x.project_x_backend.repository.UserRepository;
@@ -24,10 +25,15 @@ public class ExtractedTagDAO {
     @Autowired
     private JobRepository jobRepository;
 
+    @Autowired
+    private NoteRepository noteRepository;
+
     public void createExtractedTag(CreateTag createTag) {
         ExtractedTag extractedTag = new ExtractedTag();
         extractedTag.setUser(userRepository.getReferenceById(createTag.getUserId()));
-        extractedTag.setJob(jobRepository.getReferenceById(createTag.getJobId()));
+        com.project_x.project_x_backend.entity.Job job = jobRepository.getReferenceById(createTag.getJobId());
+        extractedTag.setJob(job);
+        extractedTag.setNote(noteRepository.getReferenceById(job.getNoteId()));
         extractedTag.setTag(createTag.getTag());
         extractedTag.setCreatedAt(Instant.now());
         extractedTagRepository.save(extractedTag);

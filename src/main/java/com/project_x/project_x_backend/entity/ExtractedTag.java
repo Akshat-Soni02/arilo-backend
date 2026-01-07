@@ -23,7 +23,11 @@ public class ExtractedTag {
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
-    @Column(name="tag", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "note_id")
+    private Note note;
+
+    @Column(name = "tag", nullable = false)
     private String tag;
 
     @Column(name = "tag_count", nullable = false)

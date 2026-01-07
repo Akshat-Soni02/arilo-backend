@@ -23,6 +23,10 @@ public class Stt {
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "note_id")
+    private Note note;
+
     @Column(nullable = false)
     private String language;
 

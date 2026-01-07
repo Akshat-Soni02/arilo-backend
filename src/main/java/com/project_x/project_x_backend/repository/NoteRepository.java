@@ -1,6 +1,7 @@
 package com.project_x.project_x_backend.repository;
 
 import com.project_x.project_x_backend.entity.Note;
+import com.project_x.project_x_backend.enums.NoteStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -23,7 +24,7 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
 
     @Query("SELECT n FROM Note n WHERE n.userId = :userId AND n.status = :status AND n.deletedAt IS NULL")
     List<Note> findByUserIdAndStatus(@Param("userId") UUID userId,
-            @Param("status") Note.Status status);
+            @Param("status") NoteStatus status);
 
     @Query("SELECT COUNT(n) FROM Note n WHERE n.userId = :userId AND n.deletedAt IS NULL")
     Long countByUserId(@Param("userId") UUID userId);

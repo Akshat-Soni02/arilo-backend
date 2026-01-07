@@ -1,16 +1,20 @@
 package com.project_x.project_x_backend.entity;
 
+import com.project_x.project_x_backend.enums.NoteStatus;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
 
 @Entity
 @Table(name = "notes")
 @Data
+@NoArgsConstructor
 public class Note {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -23,11 +27,11 @@ public class Note {
     private String storageUrl;
 
     @Column(name = "duration_seconds", nullable = true)
-    private int durationSeconds;
+    private Integer durationSeconds;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private Status status;
+    private NoteStatus status;
 
     @Column(name = "note_type", nullable = false)
     private String noteType;
@@ -35,26 +39,33 @@ public class Note {
     @Column(name = "text_content", columnDefinition = "text")
     private String textContent;
 
+    @OneToOne(mappedBy = "note", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Stt stt;
+
+    @OneToOne(mappedBy = "note", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private SmartNote smartNote;
+
+    @OneToOne(mappedBy = "note", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private AnxietyScore anxietyScore;
+
+    @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ExtractedTag> extractedTags;
+
+    @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ExtractedTask> extractedTasks;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
-    // Enum for processing status
-    public enum Status {
-        PROCESSING, DELETED, FAILED, UPLOADED
-    }
-
-    public Note() {
-    }
-
-    public Note(UUID userId, String storageUrl, int durationSeconds, Status status, String noteType,
+    public Note(UUID userId, String storageUrl, int durationSeconds, NoteStatus status, String noteType,
             String textContent) {
         this.userId = userId;
         this.storageUrl = storageUrl;

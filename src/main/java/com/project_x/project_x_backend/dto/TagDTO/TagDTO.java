@@ -1,14 +1,19 @@
 package com.project_x.project_x_backend.dto.TagDTO;
 
+import com.project_x.project_x_backend.enums.TagSource;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class TagDTO {
     private UUID jobId;
     private UUID userId;
-    private String tag;
+    private String name;
+    private String description;
+    private TagSource createdBy;
 }

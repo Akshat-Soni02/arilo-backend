@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.project_x.project_x_backend.dto.SmartNoteDTO.CreateSmartNote;
 import com.project_x.project_x_backend.entity.SmartNote;
+import com.project_x.project_x_backend.repository.NoteRepository;
 import com.project_x.project_x_backend.repository.SmartNoteRepository;
 import com.project_x.project_x_backend.repository.JobRepository;
 import com.project_x.project_x_backend.repository.UserRepository;
@@ -23,11 +24,16 @@ public class SmartNoteDAO {
     @Autowired
     private JobRepository jobRepository;
 
+    @Autowired
+    private NoteRepository noteRepository;
+
     public void createSmartNote(CreateSmartNote createSmartNote) {
         SmartNote smartNote = new SmartNote();
         smartNote.setUser(userRepository.getReferenceById(createSmartNote.getUserId()));
-        smartNote.setJob(jobRepository.getReferenceById(createSmartNote.getJobId()));
-        smartNote.setNote(createSmartNote.getNote());
+        com.project_x.project_x_backend.entity.Job job = jobRepository.getReferenceById(createSmartNote.getJobId());
+        smartNote.setJob(job);
+        smartNote.setNote(noteRepository.getReferenceById(job.getNoteId()));
+        smartNote.setNoteContent(createSmartNote.getNote());
         smartNote.setMetadata(createSmartNote.getMetadata());
         smartNote.setCreatedAt(Instant.now());
         smartNoteRepository.save(smartNote);

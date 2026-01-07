@@ -18,13 +18,13 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import com.project_x.project_x_backend.enums.JobStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "job")
+@Table(name = "jobs")
 public class Job {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -45,9 +45,9 @@ public class Job {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }
