@@ -1,20 +1,22 @@
 package com.project_x.project_x_backend.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 import com.project_x.project_x_backend.entity.Note;
 import com.project_x.project_x_backend.enums.NoteStatus;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class AudioUploadResponse {
     private UUID noteId;
     private int durationSeconds;
     private String storageUrl;
     private NoteStatus status;
-    private LocalDateTime uploadedAt;
+    private Instant uploadedAt;
 
     public AudioUploadResponse(Note note) {
         this.noteId = note.getId();
