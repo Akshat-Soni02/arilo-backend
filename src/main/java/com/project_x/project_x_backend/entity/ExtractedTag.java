@@ -30,9 +30,6 @@ public class ExtractedTag {
     @Column(name = "tag", nullable = false)
     private String tag;
 
-    @Column(name = "tag_count", nullable = false)
-    private Integer tagCount = 0;
-
     @Column(name = "created_at")
     private Instant createdAt;
 }

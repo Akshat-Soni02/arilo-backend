@@ -1,7 +1,8 @@
 package com.project_x.project_x_backend.dao;
 
 import java.time.Instant;
-import java.util.Optional;
+import java.util.UUID;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -40,12 +41,13 @@ public class ExtractedTagDAO {
     }
 
     public void addExtractedTag(CreateTag createTag) {
-        Optional<ExtractedTag> existingTag = extractedTagRepository.findByTag(createTag.getTag());
-        if (existingTag.isPresent()) {
-            existingTag.get().setTagCount(existingTag.get().getTagCount() + createTag.getTagCount());
-            extractedTagRepository.save(existingTag.get());
-        } else {
-            createExtractedTag(createTag);
+        createExtractedTag(createTag);
+    }
+
+    public void deleteExtractedTags(UUID noteId) {
+        List<ExtractedTag> extractedTags = extractedTagRepository.findAllByNoteId(noteId);
+        for (ExtractedTag extractedTag : extractedTags) {
+            extractedTagRepository.delete(extractedTag);
         }
     }
 }

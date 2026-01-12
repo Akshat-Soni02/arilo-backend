@@ -11,5 +11,4 @@ public class CreateTag {
     private UUID jobId;
     private UUID userId;
     private String tag;
-    private Integer tagCount;
 }

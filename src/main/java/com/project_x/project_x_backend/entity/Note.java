@@ -1,6 +1,7 @@
 package com.project_x.project_x_backend.entity;
 
 import com.project_x.project_x_backend.enums.NoteStatus;
+import com.project_x.project_x_backend.enums.NoteType;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,8 +34,9 @@ public class Note {
     @Column(name = "status", nullable = false)
     private NoteStatus status;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "note_type", nullable = false)
-    private String noteType;
+    private NoteType noteType;
 
     @Column(name = "text_content", columnDefinition = "text")
     private String textContent;
@@ -43,7 +45,7 @@ public class Note {
     private Stt stt;
 
     @OneToOne(mappedBy = "note", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private SmartNote smartNote;
+    private Noteback noteback;
 
     @OneToOne(mappedBy = "note", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private AnxietyScore anxietyScore;
@@ -53,6 +55,9 @@ public class Note {
 
     @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ExtractedTask> extractedTasks;
+
+    @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<NoteTag> noteTags;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -65,7 +70,7 @@ public class Note {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    public Note(UUID userId, String storageUrl, int durationSeconds, NoteStatus status, String noteType,
+    public Note(UUID userId, String storageUrl, int durationSeconds, NoteStatus status, NoteType noteType,
             String textContent) {
         this.userId = userId;
         this.storageUrl = storageUrl;

@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController
-@RequestMapping("/api/tags")
+@RequestMapping("/api/v1/tags")
 public class TagController {
     // delete tag
 
@@ -37,7 +37,7 @@ public class TagController {
     private AuthService authService;
 
     // mapping to let user create tag
-    @PostMapping("")
+    @PostMapping
     public ResponseEntity<TagCreateResponse> createTag(@RequestHeader("Authorization") String authorization,
             @RequestBody TagCreateRequest tagCreateRequest) {
         UUID userId = authService.extractUserIdFromToken(authorization);
@@ -49,6 +49,10 @@ public class TagController {
         return ResponseEntity.ok(new TagCreateResponse(tag.getId(), tag.getName(), tag.getDescription(),
                 tag.getCreatedBy(), tag.getCreatedAt()));
     }
+
+    // TODO: for now we are not showing user the extracted tags and also not letting
+    // them put a specific tag to a note
+    // TODO: also
 
     // mapping to let user update tag
     @PutMapping("/{id}")
@@ -64,7 +68,7 @@ public class TagController {
                 tag.getCreatedBy(), tag.getCreatedAt()));
     }
 
-    @GetMapping("")
+    @GetMapping
     public ResponseEntity<List<TagCreateResponse>> getAllTags(@RequestHeader("Authorization") String authorization) {
         UUID userId = authService.extractUserIdFromToken(authorization);
         if (userId == null) {

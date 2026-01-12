@@ -6,6 +6,7 @@ import lombok.Data;
 import com.project_x.project_x_backend.enums.TagSource;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -38,4 +39,7 @@ public class Tag {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @OneToMany(mappedBy = "tag", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<NoteTag> noteTags;
 }

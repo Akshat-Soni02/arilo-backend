@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-rename-smart-notes-to-notebacks
+      author: antigravity
+      changes:
+        - renameTable:
+            oldTableName: smart_notes
+            newTableName: notebacks
+        - dropForeignKeyConstraint:
+            baseTableName: notebacks
+            constraintName: fk_smart_notes_note
+        - addForeignKeyConstraint:
+            baseTableName: notebacks
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_notebacks_note
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 004-refine-tags-schema
+      author: antigravity
+      changes:
+        - dropColumn:
+            tableName: extracted_tags
+            columnName: tag_count
+        - addUniqueConstraint:
+            tableName: tags
+            columnNames: user_id, name
+            constraintName: uq_tags_user_name
+        - createTable:
+            tableName: note_tags
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: note_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tag_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+        - addForeignKeyConstraint:
+            baseTableName: note_tags
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_note_tags_note
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: note_tags
+            baseColumnNames: tag_id
+            referencedTableName: tags
+            referencedColumnNames: id
+            constraintName: fk_note_tags_tag
+            onDelete: CASCADE

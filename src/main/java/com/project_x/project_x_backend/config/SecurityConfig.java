@@ -26,10 +26,14 @@ public class SecurityConfig {
         public SecurityFilterChain publicSecurityChain(HttpSecurity http) throws Exception {
                 http
                                 .securityMatcher(
-                                                "/api/auth/**",
+                                                "/api/v1/auth/**",
+                                                "/api/v1/tags/**",
                                                 "/health",
                                                 "/error",
-                                                "/api/audio/**",
+                                                "/api/v1/tasks/**",
+                                                "/api/v1/audio/**",
+                                                "/api/v1/test/**",
+                                                "/api/v1/notes/**",
                                                 "/h2-console/**")
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -51,8 +55,8 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth2 -> oauth2
-                                                .defaultSuccessUrl("/api/auth/oauth2/success", true)
-                                                .failureUrl("/api/auth/oauth2/failure"))
+                                                .defaultSuccessUrl("/api/v1/auth/oauth2/success", true)
+                                                .failureUrl("/api/v1/auth/oauth2/failure"))
                                 .exceptionHandling(ex -> ex
                                                 .authenticationEntryPoint(
                                                                 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));

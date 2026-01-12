@@ -10,9 +10,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "smart_notes")
+@Table(name = "notebacks")
 @Data
-public class SmartNote {
+public class Noteback {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

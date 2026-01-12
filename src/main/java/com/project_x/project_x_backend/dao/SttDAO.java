@@ -1,6 +1,8 @@
 package com.project_x.project_x_backend.dao;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -38,5 +40,12 @@ public class SttDAO {
         stt.setCreatedAt(Instant.now());
         stt.setUpdatedAt(Instant.now());
         sttRepository.save(stt);
+    }
+
+    public void deleteExtractedStt(UUID noteId) {
+        List<Stt> stts = sttRepository.findAllByNoteId(noteId);
+        for (Stt stt : stts) {
+            sttRepository.delete(stt);
+        }
     }
 }

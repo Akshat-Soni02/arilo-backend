@@ -24,6 +24,14 @@ public class JobDAO {
         return jobRepository.save(jobEntity);
     }
 
+    public Job createMockJob(com.project_x.project_x_backend.dto.jobDTO.test.TestCreateJob testCreateJob) {
+        Job jobEntity = new Job();
+        jobEntity.setUserId(testCreateJob.getUserId());
+        jobEntity.setNoteId(testCreateJob.getNoteId());
+        jobEntity.setStatus(testCreateJob.getStatus());
+        return jobRepository.save(jobEntity);
+    }
+
     public void updateJobStatus(UUID id, JobStatus status) {
         Job job = jobRepository.findById(id).orElse(null);
         if (job != null) {

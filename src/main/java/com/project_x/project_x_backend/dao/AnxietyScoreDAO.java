@@ -1,6 +1,8 @@
 package com.project_x.project_x_backend.dao;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -36,5 +38,12 @@ public class AnxietyScoreDAO {
         anxietyScore.setAnxietyScore(createAnxietyScore.getAnxietyScore());
         anxietyScore.setCreatedAt(Instant.now());
         anxietyScoreRepository.save(anxietyScore);
+    }
+
+    public void deleteExtractedAnxietyScores(UUID noteId) {
+        List<AnxietyScore> anxietyScores = anxietyScoreRepository.findAllByNoteId(noteId);
+        for (AnxietyScore anxietyScore : anxietyScores) {
+            anxietyScoreRepository.delete(anxietyScore);
+        }
     }
 }

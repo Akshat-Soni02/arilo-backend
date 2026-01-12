@@ -23,7 +23,7 @@ public class DefaultOutputProvider {
         return node;
     }
 
-    public JsonNode getFallbackSmart() {
+    public JsonNode getFallbackNoteback() {
         ObjectNode node = mapper.createObjectNode();
         node.put("noteback", "");
         return node;

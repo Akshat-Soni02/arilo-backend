@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/002-refactor-notes-and-stts.yaml
   - include:
       file: db/changelog/003-add-created-by-to-tags.yaml
+  - include:
+      file: db/changelog/004-rename-smart-notes-to-notebacks.yaml
