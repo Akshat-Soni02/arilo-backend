@@ -27,6 +27,10 @@ public class ExtractedTag {
     @JoinColumn(name = "note_id")
     private Note note;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tag_id")
+    private Tag canonicalTag;
+
     @Column(name = "tag", nullable = false)
     private String tag;
 

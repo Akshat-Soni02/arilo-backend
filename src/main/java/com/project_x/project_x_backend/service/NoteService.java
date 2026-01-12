@@ -21,7 +21,6 @@ import com.project_x.project_x_backend.entity.PipelineStage;
 import com.project_x.project_x_backend.dao.PipelineStageDAO;
 import com.project_x.project_x_backend.dao.NotebackDAO;
 import com.project_x.project_x_backend.dao.SttDAO;
-import com.project_x.project_x_backend.dao.TagDAO;
 import com.project_x.project_x_backend.enums.JobStatus;
 import com.project_x.project_x_backend.enums.NoteStatus;
 import com.project_x.project_x_backend.enums.NoteType;
@@ -67,9 +66,6 @@ public class NoteService {
 
     @Autowired
     private NotebackDAO notebackDAO;
-
-    @Autowired
-    private TagDAO tagDAO;
 
     @Autowired
     private ExtractedTaskDAO extractedTaskDAO;
@@ -206,7 +202,6 @@ public class NoteService {
         }
     }
 
-    // TODO: add tags to user tags if tag_count >= 3
     public void updateUserStt(UUID jobId, UUID userId, PipelineStageStatus status, JsonNode sttResult) {
         if (status.equals(PipelineStageStatus.FAILED)) {
             sttResult = defaultOutputProvider.getFallbackStt();

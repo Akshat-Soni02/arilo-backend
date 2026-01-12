@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.project_x.project_x_backend.entity.Note;
 import com.project_x.project_x_backend.repository.NoteRepository;
+import com.project_x.project_x_backend.dao.NoteTagDAO;
 
 @Component
 public class NoteDAO {
@@ -29,6 +30,9 @@ public class NoteDAO {
     @Autowired
     private NotebackDAO notebackDAO;
 
+    @Autowired
+    private NoteTagDAO noteTagDAO;
+
     // if a note's job exists, it will stay and we don't touch it
     public void deleteNote(UUID userId, UUID noteId) {
         Note note = noteRepository.findById(noteId).orElseThrow(() -> new RuntimeException("Note not found"));
@@ -38,6 +42,9 @@ public class NoteDAO {
 
         // deleting extracted properties
         deleteExtractedProperties(noteId);
+
+        // deleting note tags
+        noteTagDAO.deleteNoteTags(noteId);
 
         // deleting note
         noteRepository.delete(note);
