@@ -61,7 +61,7 @@ public class ExtractedTagDAO {
     }
 
     public void addExtractedTag(CreateTag createTag) {
-        // 1. Check if canonical tag exists
+        // Check if canonical tag exists
         Optional<Tag> existingTag = tagRepository.findByUserIdAndName(createTag.getUserId(), createTag.getTag());
 
         if (existingTag.isPresent()) {
@@ -82,7 +82,7 @@ public class ExtractedTagDAO {
     }
 
     private void promoteTag(UUID userId, String tagName) {
-        // 1. Create canonical tag
+        // Create canonical tag
         Tag newTag = new Tag();
         newTag.setId(UUID.randomUUID());
         newTag.setUser(userRepository.getReferenceById(userId));
@@ -92,13 +92,13 @@ public class ExtractedTagDAO {
         newTag.setUpdatedAt(Instant.now());
         tagRepository.save(newTag);
 
-        // 2. Update all matching extracted_tags
+        // Update all matching extracted_tags
         List<ExtractedTag> rawTags = extractedTagRepository.findByUserIdAndTagAndCanonicalTagIsNull(userId, tagName);
         for (ExtractedTag rawTag : rawTags) {
             rawTag.setCanonicalTag(newTag);
             extractedTagRepository.save(rawTag);
 
-            // 3. Create NoteTags
+            // Create NoteTags
             NoteTag noteTag = new NoteTag(rawTag.getNote(), newTag);
             noteTagRepository.save(noteTag);
         }

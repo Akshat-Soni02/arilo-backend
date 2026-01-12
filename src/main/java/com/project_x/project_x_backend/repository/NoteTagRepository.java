@@ -9,4 +9,5 @@ import com.project_x.project_x_backend.entity.NoteTag;
 
 @Repository
 public interface NoteTagRepository extends JpaRepository<NoteTag, UUID> {
+    void deleteByNoteId(UUID noteId);
 }
