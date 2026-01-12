@@ -65,3 +65,16 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_note_tags_tag
             onDelete: CASCADE
+        - addColumn:
+            tableName: extracted_tags
+            columns:
+              - column:
+                  name: tag_id
+                  type: uuid
+        - addForeignKeyConstraint:
+            baseTableName: extracted_tags
+            baseColumnNames: tag_id
+            referencedTableName: tags
+            referencedColumnNames: id
+            constraintName: fk_extracted_tags_tag
+            onDelete: CASCADE

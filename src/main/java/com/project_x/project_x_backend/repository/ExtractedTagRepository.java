@@ -11,5 +11,9 @@ import com.project_x.project_x_backend.entity.ExtractedTag;
 @Repository
 public interface ExtractedTagRepository extends JpaRepository<ExtractedTag, UUID> {
 
+    long countByUserIdAndTagAndCanonicalTagIsNull(UUID userId, String tag);
+
+    List<ExtractedTag> findByUserIdAndTagAndCanonicalTagIsNull(UUID userId, String tag);
+
     List<ExtractedTag> findAllByNoteId(UUID noteId);
 }
