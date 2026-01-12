@@ -1,6 +1,6 @@
 package com.project_x.project_x_backend.entity;
 
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -31,6 +31,7 @@ public class PipelineStage {
     @Column(name = "job_id", nullable = false)
     private UUID jobId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "pipeline_name", nullable = false)
     private PipelineName pipelineName;
 
@@ -42,15 +43,15 @@ public class PipelineStage {
     private int attemptCount;
 
     @Column(name = "last_heartbeat")
-    private Timestamp lastHeartbeat;
+    private Instant lastHeartbeat;
 
     @Column(name = "error_message")
     private String errorMessage;
 
     @CreationTimestamp
     @Column(name = "started_at")
-    private Timestamp startedAt;
+    private Instant startedAt;
 
     @Column(name = "completed_at")
-    private Timestamp completedAt;
+    private Instant completedAt;
 }

@@ -1,0 +1,87 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-created-by-to-tags
+      author: antigravity
+      changes:
+        - addColumn:
+            tableName: tags
+            columns:
+              - column:
+                  name: created_by
+                  type: varchar(20)
+                  defaultValue: USER
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: extracted_tasks
+            columns:
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: IN_PROGRESS
+                  constraints:
+                    nullable: false
+              - column:
+                  name: note_id
+                  type: uuid
+        - addColumn:
+            tableName: extracted_tags
+            columns:
+              - column:
+                  name: note_id
+                  type: uuid
+        - addColumn:
+            tableName: stts
+            columns:
+              - column:
+                  name: note_id
+                  type: uuid
+        - addColumn:
+            tableName: smart_notes
+            columns:
+              - column:
+                  name: note_id
+                  type: uuid
+        - addColumn:
+            tableName: anxiety_scores
+            columns:
+              - column:
+                  name: note_id
+                  type: uuid
+
+        # Foreign Keys to notes table
+        - addForeignKeyConstraint:
+            baseTableName: stts
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_stts_note
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: smart_notes
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_smart_notes_note
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: anxiety_scores
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_anxiety_scores_note
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: extracted_tasks
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_extracted_tasks_note
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: extracted_tags
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_extracted_tags_note
+            onDelete: CASCADE

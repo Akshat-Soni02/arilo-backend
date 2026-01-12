@@ -3,14 +3,16 @@ package com.project_x.project_x_backend.entity;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "smart_notes")
+@Table(name = "notebacks")
 @Data
-public class SmartNote {
+public class Noteback {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -24,9 +26,14 @@ public class SmartNote {
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
-    @Column(columnDefinition = "note")
-    private String note;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "note_id")
+    private Note note;
 
+    @Column(name = "note", columnDefinition = "text")
+    private String noteContent;
+
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private JsonNode metadata;
 

@@ -1,13 +1,15 @@
 package com.project_x.project_x_backend.dao;
 
 import java.time.Instant;
-import java.util.Optional;
+import java.util.UUID;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.project_x.project_x_backend.dto.ExtractedTagDTO.CreateTag;
 import com.project_x.project_x_backend.entity.ExtractedTag;
+import com.project_x.project_x_backend.repository.NoteRepository;
 import com.project_x.project_x_backend.repository.ExtractedTagRepository;
 import com.project_x.project_x_backend.repository.JobRepository;
 import com.project_x.project_x_backend.repository.UserRepository;
@@ -24,22 +26,28 @@ public class ExtractedTagDAO {
     @Autowired
     private JobRepository jobRepository;
 
+    @Autowired
+    private NoteRepository noteRepository;
+
     public void createExtractedTag(CreateTag createTag) {
         ExtractedTag extractedTag = new ExtractedTag();
         extractedTag.setUser(userRepository.getReferenceById(createTag.getUserId()));
-        extractedTag.setJob(jobRepository.getReferenceById(createTag.getJobId()));
+        com.project_x.project_x_backend.entity.Job job = jobRepository.getReferenceById(createTag.getJobId());
+        extractedTag.setJob(job);
+        extractedTag.setNote(noteRepository.getReferenceById(job.getNoteId()));
         extractedTag.setTag(createTag.getTag());
         extractedTag.setCreatedAt(Instant.now());
         extractedTagRepository.save(extractedTag);
     }
 
     public void addExtractedTag(CreateTag createTag) {
-        Optional<ExtractedTag> existingTag = extractedTagRepository.findByTag(createTag.getTag());
-        if (existingTag.isPresent()) {
-            existingTag.get().setTagCount(existingTag.get().getTagCount() + createTag.getTagCount());
-            extractedTagRepository.save(existingTag.get());
-        } else {
-            createExtractedTag(createTag);
+        createExtractedTag(createTag);
+    }
+
+    public void deleteExtractedTags(UUID noteId) {
+        List<ExtractedTag> extractedTags = extractedTagRepository.findAllByNoteId(noteId);
+        for (ExtractedTag extractedTag : extractedTags) {
+            extractedTagRepository.delete(extractedTag);
         }
     }
 }

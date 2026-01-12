@@ -1,17 +1,16 @@
 package com.project_x.project_x_backend.dto.TagDTO;
 
 import java.util.UUID;
-
-import org.springframework.stereotype.Component;
+import com.project_x.project_x_backend.enums.TagSource;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-@Component
 @Data
 @AllArgsConstructor
-public class TagDTO {
-    private UUID jobId;
+public class TagCreateInt {
     private UUID userId;
-    private String tag;
+    private String name;
+    private String description;
+    private TagSource createdBy;
 }

@@ -1,28 +1,33 @@
 package com.project_x.project_x_backend.service;
 
-import com.project_x.project_x_backend.entity.AudioStore;
-import com.project_x.project_x_backend.repository.AudioRepository;
+import com.project_x.project_x_backend.entity.Note;
+import com.project_x.project_x_backend.repository.NoteRepository;
 import com.project_x.project_x_backend.utility.DefaultOutputProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project_x.project_x_backend.dao.ExtractedTagDAO;
 import com.project_x.project_x_backend.dao.ExtractedTaskDAO;
 import com.project_x.project_x_backend.dao.JobDAO;
+import com.project_x.project_x_backend.dao.NoteDAO;
 import com.project_x.project_x_backend.dto.ExtractedTagDTO.CreateTag;
 import com.project_x.project_x_backend.dto.ExtractedTaskDTO.CreateTask;
-import com.project_x.project_x_backend.dto.SmartNoteDTO.CreateSmartNote;
+import com.project_x.project_x_backend.dto.NoteDTO.NoteUploadResponse;
+import com.project_x.project_x_backend.dto.NotebackDTO.CreateNoteback;
 import com.project_x.project_x_backend.dto.SttDTO.CreateStt;
 import com.project_x.project_x_backend.dto.jobDTO.CreateJob;
 import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackReq;
 import com.project_x.project_x_backend.entity.Job;
 import com.project_x.project_x_backend.entity.PipelineStage;
 import com.project_x.project_x_backend.dao.PipelineStageDAO;
-import com.project_x.project_x_backend.dao.SmartNoteDAO;
+import com.project_x.project_x_backend.dao.NotebackDAO;
 import com.project_x.project_x_backend.dao.SttDAO;
 import com.project_x.project_x_backend.dao.TagDAO;
 import com.project_x.project_x_backend.enums.JobStatus;
+import com.project_x.project_x_backend.enums.NoteStatus;
+import com.project_x.project_x_backend.enums.NoteType;
 import com.project_x.project_x_backend.enums.PipelineName;
 import com.project_x.project_x_backend.enums.PipelineStageStatus;
+import com.project_x.project_x_backend.enums.TaskStatus;
 import com.project_x.project_x_backend.dto.pipelineDTO.CreatePipeline;
 import com.project_x.project_x_backend.dao.AnxietyScoreDAO;
 import com.project_x.project_x_backend.dto.AnxietyScoreDTO.CreateAnxietyScore;
@@ -41,12 +46,12 @@ import java.util.UUID;
 
 @Service
 @Transactional
-public class AudioService {
+public class NoteService {
 
-    private static final Logger logger = LoggerFactory.getLogger(AudioService.class);
+    private static final Logger logger = LoggerFactory.getLogger(NoteService.class);
 
     @Autowired
-    private AudioRepository audioRepository;
+    private NoteRepository noteRepository;
 
     @Autowired
     private GcsStorageService gcsStorageService;
@@ -61,7 +66,7 @@ public class AudioService {
     private SttDAO sttDAO;
 
     @Autowired
-    private SmartNoteDAO smartNoteDAO;
+    private NotebackDAO notebackDAO;
 
     @Autowired
     private TagDAO tagDAO;
@@ -78,38 +83,62 @@ public class AudioService {
     @Autowired
     private JobDAO jobDAO;
 
-    public AudioStore uploadAudio(UUID userId, byte[] audioBytes, String contentType) throws IOException {
-        String normalizedContentType = normalizeContentType(contentType);
-        validateAudioData(audioBytes, normalizedContentType);
+    @Autowired
+    private PubSubService pubSubService;
 
-        AudioStore audioStore = new AudioStore(userId, null, audioBytes.length, AudioStore.Status.PROCESSING);
-        audioStore = audioRepository.save(audioStore);
+    @Autowired
+    private NoteDAO noteDAO;
+
+    public NoteUploadResponse uploadNote(UUID userId, byte[] audioBytes, String contentType, boolean isMock)
+            throws IOException {
+        String normalizedContentType = "";
+        if (!isMock) {
+            normalizedContentType = normalizeContentType(contentType);
+            validateAudioData(audioBytes, normalizedContentType);
+        }
+
+        Note note = new Note(userId, null, audioBytes.length, NoteStatus.PROCESSING, NoteType.AUDIO, "");
+        note = noteRepository.save(note);
 
         try {
-            String gcsUrl = gcsStorageService.uploadAudio(audioBytes, audioStore.getId().toString(),
-                    normalizedContentType);
-            audioStore.setStorageUrl(gcsUrl);
-            audioStore.setStatus(AudioStore.Status.UPLOADED);
-            return audioRepository.save(audioStore);
+            String gcsUrl = "";
+            if (isMock) {
+                gcsUrl = "MockUrl";
+            } else {
+                gcsUrl = gcsStorageService.uploadAudio(audioBytes, note.getId().toString(),
+                        normalizedContentType);
+                note.setStorageUrl(gcsUrl);
+            }
+            note.setStatus(NoteStatus.UPLOADED);
+            noteRepository.save(note);
+            Job job = startEngineJob(userId, note.getId(), gcsUrl, "", "", "audio/wav");
+            return new NoteUploadResponse(note.getId(), note.getNoteType(), job.getId(), job.getStatus());
         } catch (Exception e) {
-            audioStore.setStatus(AudioStore.Status.FAILED);
-            audioRepository.save(audioStore);
+            note.setStatus(NoteStatus.FAILED);
+            noteRepository.save(note);
             throw new RuntimeException("Failed to upload audio: " + e.getMessage(), e);
         }
     }
 
-    public void startEngineJob(UUID userId, UUID noteId, UUID audioId, String gcsUrl, String location, String timestamp,
+    public void deleteNote(UUID userId, UUID noteId) {
+        Note note = noteRepository.findById(noteId).orElseThrow(() -> new RuntimeException("Note not found"));
+        if (!note.getUserId().equals(userId)) {
+            throw new RuntimeException("User is not authorized to delete this note");
+        }
+
+        noteDAO.deleteNote(userId, noteId);
+    }
+
+    public Job startEngineJob(UUID userId, UUID noteId, String gcsUrl, String location, String timestamp,
             String inputType) {
         // create job
         // create pipeline stage row for each stage
         // add job to queue
 
         try {
-            Job job = jobDAO.createJob(new CreateJob(audioId, userId));
-            PipelineStage stage1 = pipelineStageDAO
-                    .createPipelineStage(new CreatePipeline(job.getId(), PipelineName.STT));
-            PipelineStage stage2 = pipelineStageDAO
-                    .createPipelineStage(new CreatePipeline(job.getId(), PipelineName.SMART));
+            Job job = jobDAO.createJob(new CreateJob(userId, noteId));
+            pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.STT));
+            pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.SMART));
 
             ObjectMapper mapper = new ObjectMapper();
 
@@ -122,9 +151,12 @@ public class AudioService {
             pubsubPayload.put("input_type", "audio/wav");
 
             String jsonPayload = mapper.writeValueAsString(pubsubPayload);
-            // enqueue job here
+            logger.info("JSON payload: {}", jsonPayload);
+            // pubSubService.publishMessage(jsonPayload);
+            return job;
         } catch (Exception e) {
-            // TODO: handle exception
+            logger.error("Failed to start engine job for note {}: {}", noteId, e.getMessage());
+            return null;
         }
     }
 
@@ -174,7 +206,7 @@ public class AudioService {
         }
     }
 
-    // @TODO add tags to user tags if tag_count >= 3
+    // TODO: add tags to user tags if tag_count >= 3
     public void updateUserStt(UUID jobId, UUID userId, PipelineStageStatus status, JsonNode sttResult) {
         if (status.equals(PipelineStageStatus.FAILED)) {
             sttResult = defaultOutputProvider.getFallbackStt();
@@ -188,7 +220,7 @@ public class AudioService {
         JsonNode tagsNode = sttResult.get("tags");
         if (tagsNode != null && tagsNode.isArray()) {
             for (JsonNode tagNode : tagsNode) {
-                extractedTagDAO.addExtractedTag(new CreateTag(jobId, userId, tagNode.asText(), 1));
+                extractedTagDAO.addExtractedTag(new CreateTag(jobId, userId, tagNode.asText()));
             }
         }
 
@@ -196,7 +228,8 @@ public class AudioService {
         JsonNode tasksNode = sttResult.get("tasks");
         if (tasksNode != null && tasksNode.isArray()) {
             for (JsonNode taskNode : tasksNode) {
-                extractedTaskDAO.createExtractedTask(new CreateTask(jobId, userId, taskNode.asText()));
+                extractedTaskDAO
+                        .createExtractedTask(new CreateTask(jobId, userId, taskNode.asText(), TaskStatus.IN_PROGRESS));
             }
         }
 
@@ -209,10 +242,10 @@ public class AudioService {
 
     public void updateUserNote(UUID jobId, UUID userId, PipelineStageStatus status, JsonNode noteResult) {
         if (status.equals(PipelineStageStatus.FAILED)) {
-            noteResult = defaultOutputProvider.getFallbackSmart();
+            noteResult = defaultOutputProvider.getFallbackNoteback();
         }
 
-        smartNoteDAO.createSmartNote(new CreateSmartNote(jobId, userId, noteResult.get("note").asText(), noteResult));
+        notebackDAO.createNoteback(new CreateNoteback(jobId, userId, noteResult.get("note").asText(), noteResult));
     }
 
     private String normalizeContentType(String contentType) {

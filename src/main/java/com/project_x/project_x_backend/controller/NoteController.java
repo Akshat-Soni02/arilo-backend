@@ -1,13 +1,14 @@
 package com.project_x.project_x_backend.controller;
 
-import com.project_x.project_x_backend.dto.AudioUploadResponse;
 import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackRes;
-import com.project_x.project_x_backend.entity.AudioStore;
-import com.project_x.project_x_backend.service.AudioService;
-import com.project_x.project_x_backend.service.JwtService;
+import com.project_x.project_x_backend.entity.Job;
+import com.project_x.project_x_backend.entity.Note;
+import com.project_x.project_x_backend.service.NoteService;
+import com.project_x.project_x_backend.service.AuthService;
 
 import jakarta.validation.Valid;
 
+import com.project_x.project_x_backend.dto.NoteDTO.NoteUploadResponse;
 import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,28 +26,29 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/audio")
-@CrossOrigin(origins = { "http://localhost:5173" })
-public class AudioController {
+@RequestMapping("/api/v1/notes")
+public class NoteController {
+    private static final Logger logger = LoggerFactory.getLogger(NoteController.class);
 
-    private static final Logger logger = LoggerFactory.getLogger(AudioController.class);
+    // TODO: move this config and lessen supported types
     private static final List<String> SUPPORTED_AUDIO_TYPES = Arrays.asList(
             "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4",
             "audio/x-m4a", "audio/flac", "audio/wave");
 
     @Autowired
-    private AudioService audioService;
+    private NoteService noteService;
 
     @Autowired
-    private JwtService jwtService;
+    private AuthService authService;
 
+    // TODO: check audio length and suspend if more than max allowed
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<AudioUploadResponse> uploadAudioFile(
+    public ResponseEntity<NoteUploadResponse> uploadAudioFile(
             @RequestHeader("Authorization") String authorization,
             @RequestParam("file") MultipartFile file) {
 
         try {
-            UUID userId = extractUserIdFromToken(authorization);
+            UUID userId = authService.extractUserIdFromToken(authorization);
             if (userId == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
@@ -62,11 +64,8 @@ public class AudioController {
             }
 
             byte[] audioBytes = file.getBytes();
-            AudioStore audioStore = audioService.uploadAudio(userId, audioBytes, contentType);
-            AudioUploadResponse response = new AudioUploadResponse(audioStore);
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-
+            NoteUploadResponse noteUploadResponse = noteService.uploadNote(userId, audioBytes, contentType, false);
+            return ResponseEntity.status(HttpStatus.CREATED).body(noteUploadResponse);
         } catch (IOException e) {
             logger.error("IO error during audio upload: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -79,6 +78,21 @@ public class AudioController {
         }
     }
 
+    public ResponseEntity<String> deleteNote(@RequestHeader("Authorization") String authorization,
+            @PathVariable("noteId") UUID noteId) {
+        try {
+            UUID userId = authService.extractUserIdFromToken(authorization);
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            noteService.deleteNote(userId, noteId);
+            return ResponseEntity.ok("Note deleted successfully");
+        } catch (Exception e) {
+            logger.error("Error deleting note: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @PostMapping("/engine/callback")
     public ResponseEntity<EngineCallbackRes> engineCallback(@RequestBody @Valid EngineCallbackReq request) {
         // if req status is failed we check all the stages and if all of them are failed
@@ -87,7 +101,7 @@ public class AudioController {
         // also if the stage is completed, we update the output in the db
 
         try {
-            boolean jobCompleted = audioService.handleEngineCallback(request);
+            boolean jobCompleted = noteService.handleEngineCallback(request);
             if (!jobCompleted)
                 logger.warn("Job failed by engine");
             return ResponseEntity.ok(new EngineCallbackRes("ok"));
@@ -101,7 +115,7 @@ public class AudioController {
     public ResponseEntity<String> testAuth(
             @RequestHeader("Authorization") String authorization) {
         try {
-            UUID userId = extractUserIdFromToken(authorization);
+            UUID userId = authService.extractUserIdFromToken(authorization);
             if (userId == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("JWT validation failed");
             }
@@ -117,25 +131,5 @@ public class AudioController {
         logger.error("File size exceeded: {}", exc.getMessage());
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
                 .body("File size exceeds maximum allowed size");
-    }
-
-    private UUID extractUserIdFromToken(String authorization) {
-        try {
-            if (authorization == null || !authorization.startsWith("Bearer ")) {
-                logger.warn("Invalid authorization header");
-                return null;
-            }
-
-            String token = authorization.substring(7);
-            if (!jwtService.isTokenValid(token)) {
-                logger.warn("Invalid JWT token");
-                return null;
-            }
-
-            return jwtService.extractUserId(token);
-        } catch (Exception e) {
-            logger.error("Error extracting user ID: {}", e.getMessage());
-            return null;
-        }
     }
 }

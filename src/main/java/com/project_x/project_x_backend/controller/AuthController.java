@@ -18,16 +18,15 @@ import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/auth")
-@CrossOrigin(origins = {"http://localhost:3000", "https://your-frontend-domain.com"})
+@RequestMapping("/api/v1/auth")
 public class AuthController {
-    
+
     @Autowired
     private UserService userService;
-    
+
     @Autowired
     private JwtService jwtService;
-    
+
     /**
      * OAuth2 Success Handler - called after successful Google authentication
      */
@@ -36,27 +35,26 @@ public class AuthController {
         try {
             // Create or update user from OAuth2 data
             User user = userService.createOrUpdateFromOAuth(oAuth2User);
-            
+
             // Generate JWT token
-            String token = jwtService.generateToken(user.getEmail(),user.getName(),user.getId());
-            
+            String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getId());
+
             // Create response
             AuthResponse response = new AuthResponse(
-                token,
-                "Bearer",
-                user.getId(),
-                user.getEmail(),
-                user.getName(),
-                user.getProfilePictureUrl()
-            );
-            
+                    token,
+                    "Bearer",
+                    user.getId(),
+                    user.getEmail(),
+                    user.getName(),
+                    user.getProfilePictureUrl());
+
             return ResponseEntity.ok(response);
-            
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    
+
     /**
      * Get current user information from JWT token
      */
@@ -66,28 +64,28 @@ public class AuthController {
             if (!authorization.startsWith("Bearer ")) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
-            
+
             String token = authorization.substring(7);
-            
+
             if (!jwtService.isTokenValid(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
-            
+
             UUID userId = jwtService.extractUserId(token);
             Optional<User> userOpt = userService.findById(userId);
-            
+
             if (userOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
-            
+
             UserResponse userResponse = new UserResponse(userOpt.get());
             return ResponseEntity.ok(userResponse);
-            
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }
-    
+
     /**
      * Validate JWT token
      */
@@ -97,17 +95,17 @@ public class AuthController {
             if (!authorization.startsWith("Bearer ")) {
                 return ResponseEntity.ok(false);
             }
-            
+
             String token = authorization.substring(7);
             boolean isValid = jwtService.isTokenValid(token);
-            
+
             return ResponseEntity.ok(isValid);
-            
+
         } catch (Exception e) {
             return ResponseEntity.ok(false);
         }
     }
-    
+
     /**
      * OAuth2 login initiation endpoint
      */

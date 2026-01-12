@@ -1,0 +1,57 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-refactor-notes-and-stts
+      author: antigravity
+      changes:
+        - renameTable:
+            oldTableName: audio_store
+            newTableName: notes
+        - addColumn:
+            tableName: notes
+            columns:
+              - column:
+                  name: note_type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: text_content
+                  type: text
+        - renameTable:
+            oldTableName: stt
+            newTableName: stts
+        - renameColumn:
+            tableName: jobs
+            oldColumnName: audio_id
+            newColumnName: note_id
+            columnDataType: uuid
+        - dropForeignKeyConstraint:
+            baseTableName: jobs
+            constraintName: fk_jobs_audio
+        - addForeignKeyConstraint:
+            baseTableName: jobs
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_jobs_note
+            onDelete: CASCADE
+        - dropForeignKeyConstraint:
+            baseTableName: notes
+            constraintName: fk_audio_user
+        - addForeignKeyConstraint:
+            baseTableName: notes
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_note_user
+            onDelete: CASCADE
+        - dropForeignKeyConstraint:
+            baseTableName: stts
+            constraintName: fk_stt_job
+        - addForeignKeyConstraint:
+            baseTableName: stts
+            baseColumnNames: job_id
+            referencedTableName: jobs
+            referencedColumnNames: id
+            constraintName: fk_stts_job
+            onDelete: CASCADE

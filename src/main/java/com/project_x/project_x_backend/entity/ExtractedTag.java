@@ -23,11 +23,12 @@ public class ExtractedTag {
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
-    @Column(columnDefinition = "tag", nullable = false)
-    private String tag;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "note_id")
+    private Note note;
 
-    @Column(name = "tag_count", nullable = false)
-    private Integer tagCount = 0;
+    @Column(name = "tag", nullable = false)
+    private String tag;
 
     @Column(name = "created_at")
     private Instant createdAt;

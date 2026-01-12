@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "stt")
+@Table(name = "stts")
 @Data
 public class Stt {
 
@@ -23,10 +23,14 @@ public class Stt {
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "note_id")
+    private Note note;
+
     @Column(nullable = false)
     private String language;
 
-    @Column(columnDefinition = "stt")
+    @Column(name = "stt")
     private String stt;
 
     @Column(name = "created_at")
