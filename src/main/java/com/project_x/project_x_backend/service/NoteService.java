@@ -11,6 +11,8 @@ import com.project_x.project_x_backend.dao.JobDAO;
 import com.project_x.project_x_backend.dao.NoteDAO;
 import com.project_x.project_x_backend.dto.ExtractedTagDTO.CreateTag;
 import com.project_x.project_x_backend.dto.ExtractedTaskDTO.CreateTask;
+import com.project_x.project_x_backend.dto.NoteDTO.NoteFilter;
+import com.project_x.project_x_backend.dto.NoteDTO.NoteRes;
 import com.project_x.project_x_backend.dto.NoteDTO.NoteUploadResponse;
 import com.project_x.project_x_backend.dto.NotebackDTO.CreateNoteback;
 import com.project_x.project_x_backend.dto.SttDTO.CreateStt;
@@ -22,15 +24,18 @@ import com.project_x.project_x_backend.dao.PipelineStageDAO;
 import com.project_x.project_x_backend.dao.NotebackDAO;
 import com.project_x.project_x_backend.dao.SttDAO;
 import com.project_x.project_x_backend.enums.JobStatus;
+import com.project_x.project_x_backend.enums.NoteSortField;
 import com.project_x.project_x_backend.enums.NoteStatus;
 import com.project_x.project_x_backend.enums.NoteType;
 import com.project_x.project_x_backend.enums.PipelineName;
 import com.project_x.project_x_backend.enums.PipelineStageStatus;
+import com.project_x.project_x_backend.enums.SortOrder;
 import com.project_x.project_x_backend.enums.TaskStatus;
 import com.project_x.project_x_backend.dto.pipelineDTO.CreatePipeline;
 import com.project_x.project_x_backend.dao.AnxietyScoreDAO;
 import com.project_x.project_x_backend.dto.AnxietyScoreDTO.CreateAnxietyScore;
 
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,10 +43,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import com.project_x.project_x_backend.entity.NoteTag;
+import com.project_x.project_x_backend.entity.Stt;
+import com.project_x.project_x_backend.entity.Noteback;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 @Service
 @Transactional
@@ -114,6 +132,89 @@ public class NoteService {
             noteRepository.save(note);
             throw new RuntimeException("Failed to upload audio: " + e.getMessage(), e);
         }
+    }
+
+    public List<NoteRes> getNotes(UUID userId, NoteFilter filter) {
+        // filter = { tagId = tag id, q = substring present in the stt, createdAfter =
+        // only get notes created after this timestamp inclusive, createdBefore = only
+        // get notes created before this timestamp inclusive, sort = sort by what (for
+        // now only supports createdAt), order = sorting order (asc | desc)}
+        try {
+            NoteFilter normFilter = normalize(filter);
+            Specification<Note> spec = (root, query, cb) -> {
+                query.distinct(true);
+                List<Predicate> predicates = new ArrayList<>();
+                predicates.add(cb.equal(root.get("userId"), userId));
+                predicates.add(cb.isNull(root.get("deletedAt")));
+
+                if (normFilter.getTagId() != null) {
+                    Join<Note, NoteTag> tagsJoin = root.join("noteTags");
+                    predicates.add(cb.equal(tagsJoin.get("tag").get("id"), normFilter.getTagId()));
+                }
+
+                if (normFilter.getQ() != null) {
+                    Join<Note, Stt> sttJoin = root.join("stt", JoinType.LEFT);
+                    predicates.add(cb.like(cb.lower(sttJoin.get("stt")), "%" + normFilter.getQ().toLowerCase() + "%"));
+                }
+
+                if (normFilter.getCreatedAfter() != null) {
+                    predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), normFilter.getCreatedAfter()));
+                }
+
+                if (normFilter.getCreatedBefore() != null) {
+                    predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), normFilter.getCreatedBefore()));
+                }
+
+                return cb.and(predicates.toArray(new Predicate[0]));
+            };
+
+            String sortField = normFilter.getSort().equals(NoteSortField.CREATED_AT) ? "createdAt" : "createdAt";
+            Sort.Direction direction = normFilter.getOrder() == SortOrder.ASC ? Sort.Direction.ASC
+                    : Sort.Direction.DESC;
+
+            List<Note> notes = noteRepository.findAll(spec, Sort.by(direction, sortField));
+
+            return notes.stream().map(this::mapToNoteRes).collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get notes: " + e.getMessage(), e);
+        }
+
+    }
+
+    public NoteRes mapToNoteRes(Note note) {
+        NoteRes res = new NoteRes();
+        res.setNoteId(note.getId());
+        res.setCreatedAt(note.getCreatedAt());
+        res.setStt(note.getStt() != null ? note.getStt().getStt() : null);
+        res.setNoteback(note.getNoteback() != null ? note.getNoteback().getNoteContent() : null);
+        return res;
+    }
+
+    public NoteFilter normalize(NoteFilter filter) throws Exception {
+        if (filter.getCreatedAfter() != null && filter.getCreatedBefore() != null
+                && filter.getCreatedAfter().isAfter(filter.getCreatedBefore())) {
+            throw new BadRequestException("createdAfter cannot be after createdBefore");
+        }
+
+        if (filter.getQ() != null && !filter.getQ().isBlank()) {
+            filter.setQ(filter.getQ().trim());
+        } else {
+            filter.setQ(null);
+        }
+
+        // if(filter.getCreatedAfter() != null) {
+        // filter.setCreatedAfter(filter.getCreatedAfter().toInstant());
+        // }
+        // if(filter.getCreatedBefore() != null) {
+        // filter.setCreatedBefore(filter.getCreatedBefore().toInstant());
+        // }
+        if (filter.getSort() == null) {
+            filter.setSort(NoteSortField.CREATED_AT);
+        }
+        if (filter.getOrder() == null) {
+            filter.setOrder(SortOrder.DESC);
+        }
+        return filter;
     }
 
     public void deleteNote(UUID userId, UUID noteId) {
