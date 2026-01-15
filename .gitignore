@@ -12,6 +12,7 @@ target/
 .settings
 .springBeans
 .sts4-cache
+.env
 
 documind-474519-23134803b126.json
 gcs_credentials.json

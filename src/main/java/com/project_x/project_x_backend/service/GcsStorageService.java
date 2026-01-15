@@ -25,27 +25,15 @@ public class GcsStorageService {
     @Value("${spring.gcs.project.id:your-project-id}")
     private String projectId;
 
-    @Value("${spring.gcs.credentials.path:#{null}}")
-    private String credentialsPath;
-
     private Storage storage;
 
     @PostConstruct
     public void initializeStorage() throws IOException {
-        GoogleCredentials credentials;
 
-        if (credentialsPath != null && !credentialsPath.trim().isEmpty()) {
-            File credFile = new File(credentialsPath);
-            if (!credFile.exists()) {
-                throw new IOException("GCS credentials file not found at: " + credentialsPath);
-            }
-
-            try (FileInputStream fis = new FileInputStream(credFile)) {
-                credentials = GoogleCredentials.fromStream(fis);
-            }
-        } else {
-            credentials = GoogleCredentials.getApplicationDefault();
-        }
+        // Automatically uses:
+        // - GOOGLE_APPLICATION_CREDENTIALS locally
+        // - Cloud Run service account in prod
+        GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
 
         this.storage = StorageOptions.newBuilder()
                 .setProjectId(projectId)

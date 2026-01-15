@@ -7,7 +7,7 @@ plugins {
 group = 'com.project-x'
 version = '0.0.1-SNAPSHOT'
 description = 'Audio capturer project'
-sourceCompatibility = '21'
+// sourceCompatibility = '21'
 
 java {
 	toolchain {
