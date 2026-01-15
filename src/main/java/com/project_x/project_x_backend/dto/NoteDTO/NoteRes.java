@@ -1,11 +1,14 @@
-// package com.project_x.project_x_backend.dto.NoteDTO;
+package com.project_x.project_x_backend.dto.NoteDTO;
 
-// import lombok.Data;
+import java.time.Instant;
+import java.util.UUID;
 
-// @Data
-// public class NoteRes {
-// private UUID id;
-// private String stt;
-// private String noteback;
+import lombok.Data;
 
-// }
+@Data
+public class NoteRes {
+    private UUID noteId;
+    private String stt;
+    private String noteback;
+    private Instant createdAt;
+}

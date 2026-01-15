@@ -8,6 +8,8 @@ import com.project_x.project_x_backend.service.AuthService;
 
 import jakarta.validation.Valid;
 
+import com.project_x.project_x_backend.dto.NoteDTO.NoteFilter;
+import com.project_x.project_x_backend.dto.NoteDTO.NoteRes;
 import com.project_x.project_x_backend.dto.NoteDTO.NoteUploadResponse;
 import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackReq;
 import org.slf4j.Logger;
@@ -78,10 +80,26 @@ public class NoteController {
         }
     }
 
-    // public ResponseEntity<
+    // for now filter supports -> tag_id, a text matching to note's stt
+    // TODO: support pagination
+    @PostMapping("/query")
+    public ResponseEntity<List<NoteRes>> getNotesWithFilter(@RequestHeader("Authorization") String authorization,
+            @RequestBody NoteFilter filter) {
+        try {
+            UUID userId = authService.extractUserIdFromToken(authorization);
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            return ResponseEntity.ok(noteService.getNotes(userId, filter));
+        } catch (Exception e) {
+            logger.error("Error getting notes: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
+    @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteNote(@RequestHeader("Authorization") String authorization,
-            @PathVariable("noteId") UUID noteId) {
+            @PathVariable("id") UUID noteId) {
         try {
             UUID userId = authService.extractUserIdFromToken(authorization);
             if (userId == null) {

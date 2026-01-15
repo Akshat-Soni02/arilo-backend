@@ -4,6 +4,7 @@ import com.project_x.project_x_backend.entity.Note;
 import com.project_x.project_x_backend.enums.NoteStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.repository.query.Param;
 
@@ -12,12 +13,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface NoteRepository extends JpaRepository<Note, UUID> {
+public interface NoteRepository extends JpaRepository<Note, UUID>, JpaSpecificationExecutor<Note> {
 
     List<Note> findByUserIdAndDeletedAtIsNull(UUID userId);
 
     @Query("SELECT n FROM Note n WHERE n.userId = :userId AND n.deletedAt IS NULL")
-    List<Note> findActiveNoteByUserId(@Param("userId") UUID userId);
+    List<Note> findActiveNotesByUserId(@Param("userId") UUID userId);
 
     @Query("SELECT n FROM Note n WHERE n.id = :id AND n.deletedAt IS NULL")
     Optional<Note> findActiveNoteById(@Param("id") UUID id);

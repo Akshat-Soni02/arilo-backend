@@ -1,5 +1,6 @@
 package com.project_x.project_x_backend.dao;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,10 @@ public class NoteDAO {
 
     @Autowired
     private NoteTagDAO noteTagDAO;
+
+    public List<Note> findUserNotes(UUID userId) {
+        return noteRepository.findActiveNotesByUserId(userId);
+    }
 
     // if a note's job exists, it will stay and we don't touch it
     public void deleteNote(UUID userId, UUID noteId) {
