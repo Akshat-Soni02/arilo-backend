@@ -97,8 +97,9 @@ public class NoteController {
         }
     }
 
+    @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteNote(@RequestHeader("Authorization") String authorization,
-            @PathVariable("noteId") UUID noteId) {
+            @PathVariable("id") UUID noteId) {
         try {
             UUID userId = authService.extractUserIdFromToken(authorization);
             if (userId == null) {
