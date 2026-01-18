@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-vector-extension
+      author: akshat
+      changes:
+        - sql:
+            sql: CREATE EXTENSION IF NOT EXISTS vector;
+  - changeSet:
+      id: create-note-sentences-table
+      author: akshat
+      changes:
+        - createTable:
+            tableName: note_sentences
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: note_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sentence_index
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sentence_text
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding
+                  type: vector(1536)
+              - column:
+                  name: importance_score
+                  type: float
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+
+        - addForeignKeyConstraint:
+            baseTableName: note_sentences
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_note_sentences_user
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: note_sentences
+            baseColumnNames: note_id
+            referencedTableName: notes
+            referencedColumnNames: id
+            constraintName: fk_note_sentences_note
+            onDelete: CASCADE

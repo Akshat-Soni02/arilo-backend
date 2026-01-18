@@ -32,22 +32,16 @@ public class EngineCallbackReq {
     @JsonProperty("input_type")
     private String inputType;
 
-    @NotNull
     private String location;
 
-    @NotNull
     private Timestamp timestamp;
 
-    @NotNull
     private JsonNode output;
 
-    @NotNull
     private String error;
 
-    @NotNull
     @JsonProperty("pipeline_stage")
     private PipelineName pipelineStage;
 
-    @NotNull
     private PipelineStageStatus status;
 }
