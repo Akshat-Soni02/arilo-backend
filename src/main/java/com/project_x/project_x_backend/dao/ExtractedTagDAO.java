@@ -22,6 +22,7 @@ import java.util.Optional;
 import com.project_x.project_x_backend.entity.Job;
 
 @Component
+@org.springframework.transaction.annotation.Transactional
 public class ExtractedTagDAO {
 
     @Autowired
@@ -51,7 +52,7 @@ public class ExtractedTagDAO {
         extractedTag.setTag(createTag.getTag());
         extractedTag.setCanonicalTag(canonicalTag);
         extractedTag.setCreatedAt(Instant.now());
-        extractedTagRepository.save(extractedTag);
+        extractedTag = extractedTagRepository.save(extractedTag);
 
         // If canonical exists, link to note directly
         if (canonicalTag != null) {
@@ -90,7 +91,7 @@ public class ExtractedTagDAO {
         newTag.setCreatedBy(TagSource.AI_EXTRACTED);
         newTag.setCreatedAt(Instant.now());
         newTag.setUpdatedAt(Instant.now());
-        tagRepository.save(newTag);
+        newTag = tagRepository.save(newTag);
 
         // Update all matching extracted_tags
         List<ExtractedTag> rawTags = extractedTagRepository.findByUserIdAndTagAndCanonicalTagIsNull(userId, tagName);

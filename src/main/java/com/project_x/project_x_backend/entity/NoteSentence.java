@@ -37,8 +37,9 @@ public class NoteSentence {
     @Column(name = "sentence_text", nullable = false, columnDefinition = "TEXT")
     private String sentenceText;
 
-    @Column(name = "embedding", columnDefinition = "vector")
-    private PGvector embedding;
+    @Column(name = "embedding")
+    @JdbcTypeCode(SqlTypes.VECTOR)
+    private float[] embedding;
 
     @Column(name = "importance_score")
     private Float importanceScore;

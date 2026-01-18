@@ -21,13 +21,12 @@ public class NoteSentenceDAO {
     public void createNoteSentences(UUID noteId, UUID userId, List<CreateNoteSentence> sentences) {
         List<NoteSentence> noteSentences = sentences.stream()
                 .map(dto -> {
-                    com.pgvector.PGvector embeddingVector = null;
+                    float[] embeddingArray = null;
                     if (dto.getEmbedding() != null) {
-                        float[] embeddingArray = new float[dto.getEmbedding().size()];
+                        embeddingArray = new float[dto.getEmbedding().size()];
                         for (int i = 0; i < dto.getEmbedding().size(); i++) {
                             embeddingArray[i] = dto.getEmbedding().get(i);
                         }
-                        embeddingVector = new com.pgvector.PGvector(embeddingArray);
                     }
 
                     return NoteSentence.builder()
@@ -36,7 +35,7 @@ public class NoteSentenceDAO {
                             .sentenceIndex(dto.getSentenceIndex())
                             .sentenceText(dto.getSentenceText())
                             .importanceScore(dto.getImportanceScore())
-                            .embedding(embeddingVector)
+                            .embedding(embeddingArray)
                             .build();
                 })
                 .collect(Collectors.toList());
