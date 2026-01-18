@@ -17,15 +17,18 @@ public class DefaultOutputProvider {
         ObjectNode node = mapper.createObjectNode();
         node.put("stt", "Something went wrong, please record again");
         node.put("language", "unknown");
-        node.put("tasks", mapper.createArrayNode());
+        node.set("tasks", mapper.createArrayNode());
         node.put("anxiety_score", 0);
-        node.put("tags", mapper.createArrayNode());
+        node.set("tags", mapper.createArrayNode());
         return node;
     }
 
     public JsonNode getFallbackNoteback() {
         ObjectNode node = mapper.createObjectNode();
-        node.put("noteback", "");
+        ObjectNode notebackResponse = mapper.createObjectNode();
+        notebackResponse.put("noteback", "Something went wrong, please record again");
+        node.set("noteback_response", notebackResponse);
+        node.set("sentences_with_embeddings", mapper.createArrayNode());
         return node;
     }
 }

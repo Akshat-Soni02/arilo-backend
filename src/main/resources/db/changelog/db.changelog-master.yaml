@@ -7,3 +7,7 @@ databaseChangeLog:
       file: db/changelog/003-add-created-by-to-tags.yaml
   - include:
       file: db/changelog/004-rename-smart-notes-to-notebacks.yaml
+  - include:
+      file: db/changelog/005-remove-pipeline-output-id-from-llm-metrics.yaml
+  - include:
+      file: db/changelog/006-add-note-sentences-table.yaml

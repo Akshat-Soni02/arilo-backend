@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: remove-pipeline-output-id-from-llm-metrics
+      author: akshat
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: llm_metrics
+            constraintName: fk_llm_output
+        - dropColumn:
+            tableName: llm_metrics
+            columnName: pipeline_output_id

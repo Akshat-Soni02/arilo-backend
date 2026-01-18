@@ -9,6 +9,7 @@ import com.project_x.project_x_backend.dao.ExtractedTagDAO;
 import com.project_x.project_x_backend.dao.ExtractedTaskDAO;
 import com.project_x.project_x_backend.dao.JobDAO;
 import com.project_x.project_x_backend.dao.NoteDAO;
+import com.project_x.project_x_backend.dao.NoteSentenceDAO;
 import com.project_x.project_x_backend.dto.ExtractedTagDTO.CreateTag;
 import com.project_x.project_x_backend.dto.ExtractedTaskDTO.CreateTask;
 import com.project_x.project_x_backend.dto.NoteDTO.NoteFilter;
@@ -34,6 +35,7 @@ import com.project_x.project_x_backend.enums.TaskStatus;
 import com.project_x.project_x_backend.dto.pipelineDTO.CreatePipeline;
 import com.project_x.project_x_backend.dao.AnxietyScoreDAO;
 import com.project_x.project_x_backend.dto.AnxietyScoreDTO.CreateAnxietyScore;
+import com.project_x.project_x_backend.dto.NoteSentenceDTO.CreateNoteSentence;
 
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -96,6 +98,9 @@ public class NoteService {
 
     @Autowired
     private JobDAO jobDAO;
+
+    @Autowired
+    private NoteSentenceDAO noteSentenceDAO;
 
     @Autowired
     private PubSubService pubSubService;
@@ -239,6 +244,7 @@ public class NoteService {
 
             ObjectMapper mapper = new ObjectMapper();
 
+            // TODO: pass tags
             Map<String, Object> pubsubPayload = new HashMap<>();
             pubsubPayload.put("job_id", job.getId());
             pubsubPayload.put("note_id", noteId);
@@ -246,10 +252,11 @@ public class NoteService {
             pubsubPayload.put("location", location);
             pubsubPayload.put("timestamp", timestamp);
             pubsubPayload.put("input_type", "audio/wav");
+            pubsubPayload.put("gcs_audio_url", gcsUrl);
 
             String jsonPayload = mapper.writeValueAsString(pubsubPayload);
             logger.info("JSON payload: {}", jsonPayload);
-            // pubSubService.publishMessage(jsonPayload);
+            pubSubService.publishMessage(jsonPayload);
             return job;
         } catch (Exception e) {
             logger.error("Failed to start engine job for note {}: {}", noteId, e.getMessage());
@@ -257,6 +264,8 @@ public class NoteService {
         }
     }
 
+    // TODO: handle current note sentences saving, which will come with smart
+    // callback
     public boolean handleEngineCallback(EngineCallbackReq engineCallbackReq) {
         if (engineCallbackReq.getStatus().equals(PipelineStageStatus.FAILED)) {
             checkAndMarkJobFailed(engineCallbackReq);
@@ -264,10 +273,20 @@ public class NoteService {
             checkAndMarkJobCompleted(engineCallbackReq);
         }
 
-        updateUserStt(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getStatus(),
-                engineCallbackReq.getOutput());
-        updateUserNote(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getStatus(),
-                engineCallbackReq.getOutput());
+        logger.info(
+                "Job id: {}, note id: {}, user id: {}, input type: {}, Pipeline stage: {}, status: {}, output: {}",
+                engineCallbackReq.getJobId(), engineCallbackReq.getNoteId(), engineCallbackReq.getUserId(),
+                engineCallbackReq.getInputType(), engineCallbackReq.getPipelineStage(), engineCallbackReq.getStatus(),
+                engineCallbackReq.getOutput().toString().substring(0, 100));
+
+        if (engineCallbackReq.getPipelineStage().equals(PipelineName.STT)) {
+            updateUserStt(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getStatus(),
+                    engineCallbackReq.getOutput());
+        } else if (engineCallbackReq.getPipelineStage().equals(PipelineName.SMART)) {
+            updateUserNote(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getNoteId(),
+                    engineCallbackReq.getStatus(),
+                    engineCallbackReq.getOutput());
+        }
         return engineCallbackReq.getStatus().equals(PipelineStageStatus.COMPLETED);
     }
 
@@ -336,12 +355,45 @@ public class NoteService {
         }
     }
 
-    public void updateUserNote(UUID jobId, UUID userId, PipelineStageStatus status, JsonNode noteResult) {
+    public void updateUserNote(UUID jobId, UUID userId, UUID note_id, PipelineStageStatus status, JsonNode noteResult) {
         if (status.equals(PipelineStageStatus.FAILED)) {
             noteResult = defaultOutputProvider.getFallbackNoteback();
         }
 
-        notebackDAO.createNoteback(new CreateNoteback(jobId, userId, noteResult.get("note").asText(), noteResult));
+        System.out.println(noteResult.toPrettyString());
+        System.out.println(noteResult.get("noteback_response").toPrettyString());
+        System.out.println(noteResult.get("noteback_response").get("noteback").toPrettyString());
+        System.out.println(noteResult.get("noteback_response").get("noteback").asText());
+
+        notebackDAO.createNoteback(new CreateNoteback(jobId, userId,
+                noteResult.get("noteback_response").get("noteback").asText(), noteResult));
+
+        // save note sentences
+        JsonNode sentencesNode = noteResult.get("sentences_with_embeddings");
+        if (sentencesNode != null && sentencesNode.isArray()) {
+            List<CreateNoteSentence> sentencesList = new ArrayList<>();
+            for (JsonNode sentenceNode : sentencesNode) {
+                // Parse embedding array
+                List<Float> embeddingList = new ArrayList<>();
+                JsonNode embeddingNode = sentenceNode.get("embedding");
+                if (embeddingNode != null && embeddingNode.isArray()) {
+                    for (JsonNode val : embeddingNode) {
+                        embeddingList.add((float) val.asDouble());
+                    }
+                }
+
+                sentencesList.add(new CreateNoteSentence(
+                        sentenceNode.get("sentence_index").asInt(),
+                        sentenceNode.get("sentence_text").asText(),
+                        (float) sentenceNode.get("importance_score").asDouble(),
+                        embeddingList));
+            }
+
+            // Batch save
+            if (!sentencesList.isEmpty()) {
+                noteSentenceDAO.createNoteSentences(note_id, userId, sentencesList);
+            }
+        }
     }
 
     private String normalizeContentType(String contentType) {
