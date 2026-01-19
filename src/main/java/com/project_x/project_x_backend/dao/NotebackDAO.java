@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.project_x.project_x_backend.dto.NotebackDTO.CreateNoteback;
+import com.project_x.project_x_backend.entity.Job;
 import com.project_x.project_x_backend.entity.Noteback;
 import com.project_x.project_x_backend.repository.NoteRepository;
 import com.project_x.project_x_backend.repository.NotebackRepository;
@@ -46,5 +47,9 @@ public class NotebackDAO {
         for (Noteback noteback : notebacks) {
             notebackRepository.delete(noteback);
         }
+    }
+
+    public Noteback getNotebackByJob(Job job) {
+        return notebackRepository.findByJob(job).get();
     }
 }

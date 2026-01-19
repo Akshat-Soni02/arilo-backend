@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.project_x.project_x_backend.dto.jobDTO.CreateJob;
 import com.project_x.project_x_backend.entity.Job;
+import com.project_x.project_x_backend.entity.Note;
 import com.project_x.project_x_backend.enums.JobStatus;
 import com.project_x.project_x_backend.repository.JobRepository;
 
@@ -61,12 +62,20 @@ public class JobDAO {
         jobRepository.delete(job);
     }
 
-    public Job getJobById(UUID id) {
-        return jobRepository.findById(id).orElse(null);
+    public Job getUserJobById(UUID id, UUID userId) {
+        Job job = jobRepository.findById(id).orElse(null);
+        if (job != null && job.getUserId().equals(userId)) {
+            return job;
+        }
+        return null;
     }
 
-    public List<Job> getAllJobs() {
-        return jobRepository.findAll();
+    public Job getJobByNote(Note note) {
+        return jobRepository.findByNoteId(note.getId());
+    }
+
+    public List<Job> getAllJobs(UUID userId) {
+        return jobRepository.findAllByUserId(userId);
     }
 
 }

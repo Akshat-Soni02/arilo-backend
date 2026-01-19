@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.project_x.project_x_backend.dto.SttDTO.CreateStt;
+import com.project_x.project_x_backend.entity.Job;
 import com.project_x.project_x_backend.entity.Stt;
 import com.project_x.project_x_backend.repository.NoteRepository;
 import com.project_x.project_x_backend.repository.SttRepository;
@@ -47,5 +48,9 @@ public class SttDAO {
         for (Stt stt : stts) {
             sttRepository.delete(stt);
         }
+    }
+
+    public Stt getSttByJob(Job job) {
+        return sttRepository.findByJob(job).get();
     }
 }

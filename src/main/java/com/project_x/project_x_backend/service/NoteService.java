@@ -19,6 +19,7 @@ import com.project_x.project_x_backend.dto.NotebackDTO.CreateNoteback;
 import com.project_x.project_x_backend.dto.SttDTO.CreateStt;
 import com.project_x.project_x_backend.dto.jobDTO.CreateJob;
 import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackReq;
+import com.project_x.project_x_backend.dto.jobDTO.JobPollingRes;
 import com.project_x.project_x_backend.entity.Job;
 import com.project_x.project_x_backend.entity.PipelineStage;
 import com.project_x.project_x_backend.dao.PipelineStageDAO;
@@ -189,6 +190,13 @@ public class NoteService {
     public NoteRes mapToNoteRes(Note note) {
         NoteRes res = new NoteRes();
         res.setNoteId(note.getId());
+        res.setNoteType(note.getNoteType());
+
+        Job job = jobDAO.getJobByNote(note);
+        if (job != null) {
+            res.setJobId(job.getId());
+            res.setStatus(job.getStatus());
+        }
         res.setCreatedAt(note.getCreatedAt());
         res.setStt(note.getStt() != null ? note.getStt().getStt() : null);
         res.setNoteback(note.getNoteback() != null ? note.getNoteback().getNoteContent() : null);
@@ -220,6 +228,23 @@ public class NoteService {
             filter.setOrder(SortOrder.DESC);
         }
         return filter;
+    }
+
+    public JobPollingRes getPollingStatus(UUID userId, UUID jobId) {
+        Job job = jobDAO.getUserJobById(jobId, userId);
+        if (job == null) {
+            throw new RuntimeException("Job not found");
+        }
+        JobPollingRes res = new JobPollingRes();
+        res.setStatus(job.getStatus());
+        if (job.getStatus() == JobStatus.COMPLETED) {
+            res.setStt(sttDAO.getSttByJob(job).getStt());
+            res.setNoteback(notebackDAO.getNotebackByJob(job).getNoteContent());
+        }
+        if (job.getStatus() == JobStatus.FAILED) {
+            res.setErrorMessage(job.getErrorMessage());
+        }
+        return res;
     }
 
     public void deleteNote(UUID userId, UUID noteId) {
@@ -267,6 +292,7 @@ public class NoteService {
     // TODO: handle current note sentences saving, which will come with smart
     // callback
     public boolean handleEngineCallback(EngineCallbackReq engineCallbackReq) {
+        logger.info(engineCallbackReq.toString());
         if (engineCallbackReq.getStatus().equals(PipelineStageStatus.FAILED)) {
             checkAndMarkJobFailed(engineCallbackReq);
         } else if (engineCallbackReq.getStatus().equals(PipelineStageStatus.COMPLETED)) {
@@ -274,10 +300,9 @@ public class NoteService {
         }
 
         logger.info(
-                "Job id: {}, note id: {}, user id: {}, input type: {}, Pipeline stage: {}, status: {}, output: {}",
+                "Job id: {}, note id: {}, user id: {}, input type: {}, Pipeline stage: {}, status: {}",
                 engineCallbackReq.getJobId(), engineCallbackReq.getNoteId(), engineCallbackReq.getUserId(),
-                engineCallbackReq.getInputType(), engineCallbackReq.getPipelineStage(), engineCallbackReq.getStatus(),
-                engineCallbackReq.getOutput().toString().substring(0, 100));
+                engineCallbackReq.getInputType(), engineCallbackReq.getPipelineStage(), engineCallbackReq.getStatus());
 
         if (engineCallbackReq.getPipelineStage().equals(PipelineName.STT)) {
             updateUserStt(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getStatus(),
@@ -292,6 +317,8 @@ public class NoteService {
 
     public void checkAndMarkJobFailed(EngineCallbackReq engineCallbackReq) {
         List<PipelineStage> pipelineStages = pipelineStageDAO.getPipelineStagesByJobId(engineCallbackReq.getJobId());
+        System.out.println("Pipeline stages: " + pipelineStages.toString());
+        System.out.println("Pipeline stage status: " + engineCallbackReq.getStatus());
 
         boolean allStagesFailed = true;
         for (PipelineStage stage : pipelineStages) {
@@ -308,16 +335,18 @@ public class NoteService {
 
     public void checkAndMarkJobCompleted(EngineCallbackReq engineCallbackReq) {
         List<PipelineStage> pipelineStages = pipelineStageDAO.getPipelineStagesByJobId(engineCallbackReq.getJobId());
+        System.out.println("Pipeline stage status: " + engineCallbackReq.getStatus());
 
         boolean allStagesCompleted = true;
         for (PipelineStage stage : pipelineStages) {
-            if (!stage.getStatus().equals(PipelineStageStatus.FAILED)) {
+            if (!stage.getStatus().equals(PipelineStageStatus.COMPLETED)) {
                 allStagesCompleted = false;
                 break;
             }
         }
 
         if (allStagesCompleted) {
+            System.out.println("All stages completed for job: " + engineCallbackReq.getJobId());
             jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.COMPLETED);
         }
     }

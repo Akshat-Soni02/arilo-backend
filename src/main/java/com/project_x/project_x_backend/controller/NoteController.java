@@ -1,6 +1,7 @@
 package com.project_x.project_x_backend.controller;
 
 import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackRes;
+import com.project_x.project_x_backend.dto.jobDTO.JobPollingRes;
 import com.project_x.project_x_backend.entity.Job;
 import com.project_x.project_x_backend.entity.Note;
 import com.project_x.project_x_backend.service.NoteService;
@@ -93,6 +94,21 @@ public class NoteController {
             return ResponseEntity.ok(noteService.getNotes(userId, filter));
         } catch (Exception e) {
             logger.error("Error getting notes: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/poll")
+    public ResponseEntity<JobPollingRes> getPollingStatus(@RequestHeader("Authorization") String authorization,
+            @RequestParam("job_id") UUID jobId) {
+        try {
+            UUID userId = authService.extractUserIdFromToken(authorization);
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            return ResponseEntity.ok(noteService.getPollingStatus(userId, jobId));
+        } catch (Exception e) {
+            logger.error("Error getting polling status: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
