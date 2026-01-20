@@ -27,6 +27,36 @@ public class AuthController {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    private com.project_x.project_x_backend.service.GoogleTokenService googleTokenService;
+
+    @PostMapping("/google")
+    public ResponseEntity<?> googleLogin(
+            @RequestBody com.project_x.project_x_backend.dto.authDTO.GoogleLoginRequest request) {
+        try {
+            com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload payload = googleTokenService
+                    .verify(request.getIdToken());
+            User user = userService.createOrUpdateFromGooglePayload(payload);
+
+            String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getId());
+
+            AuthResponse response = new AuthResponse(
+                    token,
+                    "Bearer",
+                    user.getId(),
+                    user.getEmail(),
+                    user.getName(),
+                    user.getProfilePictureUrl());
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error processing login: " + e.getMessage());
+        }
+    }
+
     /**
      * OAuth2 Success Handler - called after successful Google authentication
      */

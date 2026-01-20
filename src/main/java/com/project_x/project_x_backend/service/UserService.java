@@ -35,7 +35,7 @@ public class UserService {
         String profilePictureUrl = oAuth2User.getAttribute("picture");
 
         Optional<User> existingUser = userRepository.findActiveUserByGoogleId(googleId);
-        
+
         if (existingUser.isPresent()) {
             User user = existingUser.get();
             user.setEmail(email);
@@ -46,7 +46,27 @@ public class UserService {
 
             User newUser = new User(email, googleId, name, profilePictureUrl);
             return userRepository.save(newUser);
-        }   
-        
-    }    
+        }
+    }
+
+    public User createOrUpdateFromGooglePayload(
+            com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload payload) {
+        String email = payload.getEmail();
+        String googleId = payload.getSubject();
+        String name = (String) payload.get("name");
+        String profilePictureUrl = (String) payload.get("picture");
+
+        Optional<User> existingUser = userRepository.findActiveUserByGoogleId(googleId);
+
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+            user.setEmail(email);
+            user.setName(name);
+            user.setProfilePictureUrl(profilePictureUrl);
+            return userRepository.save(user);
+        } else {
+            User newUser = new User(email, googleId, name, profilePictureUrl);
+            return userRepository.save(newUser);
+        }
+    }
 }

@@ -17,6 +17,8 @@ import org.springframework.http.HttpStatus;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -46,17 +48,22 @@ public class SecurityConfig {
                 return http.build();
         }
 
+        @Autowired
+        private JwtAuthenticationFilter jwtAuthenticationFilter;
+
         @Bean
         @Order(2)
         public SecurityFilterChain protectedSecurityChain(HttpSecurity http) throws Exception {
                 http
                                 .csrf(AbstractHttpConfigurer::disable)
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(
+                                                                org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .authorizeHttpRequests(auth -> auth
                                                 .anyRequest().authenticated())
-                                .oauth2Login(oauth2 -> oauth2
-                                                .defaultSuccessUrl("/api/v1/auth/oauth2/success", true)
-                                                .failureUrl("/api/v1/auth/oauth2/failure"))
+                                .addFilterBefore(jwtAuthenticationFilter,
+                                                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                                 .exceptionHandling(ex -> ex
                                                 .authenticationEntryPoint(
                                                                 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
