@@ -20,11 +20,13 @@ import com.project_x.project_x_backend.dto.SttDTO.CreateStt;
 import com.project_x.project_x_backend.dto.jobDTO.CreateJob;
 import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackReq;
 import com.project_x.project_x_backend.dto.jobDTO.JobPollingRes;
+import com.project_x.project_x_backend.entity.ExtractedTag;
 import com.project_x.project_x_backend.entity.Job;
 import com.project_x.project_x_backend.entity.PipelineStage;
 import com.project_x.project_x_backend.dao.PipelineStageDAO;
 import com.project_x.project_x_backend.dao.NotebackDAO;
 import com.project_x.project_x_backend.dao.SttDAO;
+import com.project_x.project_x_backend.dao.TagDAO;
 import com.project_x.project_x_backend.enums.JobStatus;
 import com.project_x.project_x_backend.enums.NoteSortField;
 import com.project_x.project_x_backend.enums.NoteStatus;
@@ -46,6 +48,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -60,6 +63,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import com.project_x.project_x_backend.entity.NoteTag;
 import com.project_x.project_x_backend.entity.Stt;
+import com.project_x.project_x_backend.entity.Tag;
 import com.project_x.project_x_backend.entity.Noteback;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
@@ -90,6 +94,9 @@ public class NoteService {
 
     @Autowired
     private ExtractedTaskDAO extractedTaskDAO;
+
+    @Autowired
+    private TagDAO tagDAO;
 
     @Autowired
     private ExtractedTagDAO extractedTagDAO;
@@ -131,7 +138,18 @@ public class NoteService {
             }
             note.setStatus(NoteStatus.UPLOADED);
             noteRepository.save(note);
-            Job job = startEngineJob(userId, note.getId(), gcsUrl, "", "", "audio/wav");
+
+            List<String> existingTagsForEngine = extractedTagDAO.getUniqueExtractedTagsWithNoCanonicalTag(userId)
+                    .stream()
+                    .map(ExtractedTag::getTag)
+                    .collect(Collectors.toList());
+
+            List<Tag> userTags = tagDAO.getAllUserTags(userId);
+            existingTagsForEngine.addAll(userTags.stream().map(Tag::getName).collect(Collectors.toList()));
+
+            String existingTagsString = String.join(",", existingTagsForEngine);
+
+            Job job = startEngineJob(userId, note.getId(), gcsUrl, existingTagsString, "", "", "audio/wav");
             return new NoteUploadResponse(note.getId(), note.getNoteType(), job.getId(), job.getStatus());
         } catch (Exception e) {
             note.setStatus(NoteStatus.FAILED);
@@ -256,7 +274,8 @@ public class NoteService {
         noteDAO.deleteNote(userId, noteId);
     }
 
-    public Job startEngineJob(UUID userId, UUID noteId, String gcsUrl, String location, String timestamp,
+    public Job startEngineJob(UUID userId, UUID noteId, String gcsUrl, String existingTags, String location,
+            String timestamp,
             String inputType) {
         // create job
         // create pipeline stage row for each stage
@@ -265,7 +284,8 @@ public class NoteService {
         try {
             Job job = jobDAO.createJob(new CreateJob(userId, noteId));
             pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.STT));
-            pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.SMART));
+            // pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(),
+            // PipelineName.SMART));
 
             ObjectMapper mapper = new ObjectMapper();
 
@@ -278,6 +298,7 @@ public class NoteService {
             pubsubPayload.put("timestamp", timestamp);
             pubsubPayload.put("input_type", "audio/wav");
             pubsubPayload.put("gcs_audio_url", gcsUrl);
+            pubsubPayload.put("existing_tags", existingTags);
 
             String jsonPayload = mapper.writeValueAsString(pubsubPayload);
             logger.info("JSON payload: {}", jsonPayload);

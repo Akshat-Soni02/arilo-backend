@@ -2,6 +2,7 @@ package com.project_x.project_x_backend.dao;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,5 +111,13 @@ public class ExtractedTagDAO {
         for (ExtractedTag extractedTag : extractedTags) {
             extractedTagRepository.delete(extractedTag);
         }
+    }
+
+    public List<ExtractedTag> getExtractedTagsWithNoCanonicalTag(UUID userId) {
+        return extractedTagRepository.findByUserIdAndCanonicalTagIsNull(userId);
+    }
+
+    public List<ExtractedTag> getUniqueExtractedTagsWithNoCanonicalTag(UUID userId) {
+        return extractedTagRepository.findUniqueExtractedTagsByUserIdAndCanonicalTagIsNull(userId);
     }
 }
