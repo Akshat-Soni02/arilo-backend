@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -50,7 +51,7 @@ public class UserService {
     }
 
     public User createOrUpdateFromGooglePayload(
-            com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload payload) {
+            Payload payload) {
         String email = payload.getEmail();
         String googleId = payload.getSubject();
         String name = (String) payload.get("name");

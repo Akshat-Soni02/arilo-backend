@@ -284,8 +284,7 @@ public class NoteService {
         try {
             Job job = jobDAO.createJob(new CreateJob(userId, noteId));
             pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.STT));
-            // pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(),
-            // PipelineName.SMART));
+            pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.SMART));
 
             ObjectMapper mapper = new ObjectMapper();
 

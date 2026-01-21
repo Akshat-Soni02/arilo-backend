@@ -60,6 +60,17 @@ public class TaskController {
                 .ok(new UpdateTaskRes(task.getId(), task.getTask(), task.getStatus(), task.getCreatedAt()));
     }
 
+    @PostMapping("/delete/all")
+    public ResponseEntity<String> deleteAllTasks(@RequestHeader("Authorization") String authorization) {
+        UUID userId = authService.extractUserIdFromToken(authorization);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        taskService.deleteAllTasks(userId);
+        return ResponseEntity.ok("All tasks deleted successfully");
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteTask(@RequestHeader("Authorization") String authorization,
             @PathVariable UUID id) {
