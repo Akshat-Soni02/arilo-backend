@@ -28,4 +28,8 @@ public class TaskService {
         extractedTaskDAO.deleteTask(id);
     }
 
+    public void deleteAllTasks(UUID userId) {
+        extractedTaskDAO.deleteAllUserTasks(userId);
+    }
+
 }

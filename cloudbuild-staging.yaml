@@ -46,7 +46,7 @@ steps:
       - "--timeout"
       - "300"
       - "--add-cloudsql-instances"
-      - "documind-474519:asia-south1:arilo-pg-staging"
+      - "documind-474519:asia-south1:arilo-pg-staging-pg17"
       - "--set-env-vars"
       - "ARILO_BACKEND_CORS_ALLOWED_ORIGINS=http://localhost:5173"
       - "--set-secrets"

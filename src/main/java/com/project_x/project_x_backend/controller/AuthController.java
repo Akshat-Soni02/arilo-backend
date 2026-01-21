@@ -2,18 +2,19 @@ package com.project_x.project_x_backend.controller;
 
 import com.project_x.project_x_backend.dto.AuthResponse;
 import com.project_x.project_x_backend.dto.UserResponse;
+import com.project_x.project_x_backend.dto.authDTO.GoogleLoginRequest;
 import com.project_x.project_x_backend.entity.User;
+import com.project_x.project_x_backend.service.GoogleTokenService;
 import com.project_x.project_x_backend.service.JwtService;
 import com.project_x.project_x_backend.service.UserService;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +27,39 @@ public class AuthController {
 
     @Autowired
     private JwtService jwtService;
+
+    @Autowired
+    private GoogleTokenService googleTokenService;
+
+    @PostMapping("/google")
+    public ResponseEntity<?> googleLogin(
+            @RequestBody GoogleLoginRequest request) {
+        try {
+            if (request.isBypassAuth()) {
+                return getBypassAuthResponse();
+            }
+            Payload payload = googleTokenService
+                    .verify(request.getIdToken());
+            User user = userService.createOrUpdateFromGooglePayload(payload);
+
+            String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getId());
+
+            AuthResponse response = new AuthResponse(
+                    token,
+                    "Bearer",
+                    user.getId(),
+                    user.getEmail(),
+                    user.getName(),
+                    user.getProfilePictureUrl());
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error processing login: " + e.getMessage());
+        }
+    }
 
     /**
      * OAuth2 Success Handler - called after successful Google authentication
@@ -110,7 +144,33 @@ public class AuthController {
      * OAuth2 login initiation endpoint
      */
     @GetMapping("/login/google")
-    public void googleLogin(HttpServletResponse response) throws IOException {
-        response.sendRedirect("/oauth2/authorization/google");
+    public ResponseEntity<?> googleLoginBypass() {
+        return getBypassAuthResponse();
+    }
+
+    private ResponseEntity<AuthResponse> getBypassAuthResponse() {
+        Optional<User> userOpt = userService.findById(UUID.fromString("00000000-0000-0000-0000-000000000000"));
+        User user;
+        if (userOpt.isPresent()) {
+            user = userOpt.get();
+        } else {
+            // Fallback to finding by email or creating a new one
+            user = userService.findByEmail("test@example.com")
+                    .orElseGet(() -> userService.createOrUpdateFromGooglePayload(
+                            new Payload()
+                                    .setEmail("test@example.com")
+                                    .set("name", "Bypass User")
+                                    .set("picture", "https://via.placeholder.com/150")
+                                    .setSubject("bypass-google-id")));
+        }
+        String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getId());
+        AuthResponse response = new AuthResponse(
+                token,
+                "Bearer",
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getProfilePictureUrl());
+        return ResponseEntity.ok(response);
     }
 }

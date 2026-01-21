@@ -65,10 +65,14 @@ public class ExtractedTaskDAO {
         extractedTaskRepository.deleteById(id);
     }
 
+    public void deleteAllUserTasks(UUID userId) {
+        List<ExtractedTask> extractedTasks = extractedTaskRepository
+                .findByUser(userRepository.getReferenceById(userId));
+        extractedTaskRepository.deleteAll(extractedTasks);
+    }
+
     public void deleteExtractedTasks(UUID noteId) {
         List<ExtractedTask> extractedTasks = extractedTaskRepository.findAllByNoteId(noteId);
-        for (ExtractedTask extractedTask : extractedTasks) {
-            extractedTaskRepository.delete(extractedTask);
-        }
+        extractedTaskRepository.deleteAll(extractedTasks);
     }
 }
