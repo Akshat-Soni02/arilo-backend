@@ -3,6 +3,7 @@ package com.project_x.project_x_backend.dao;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -49,7 +50,7 @@ public class NotebackDAO {
         }
     }
 
-    public Noteback getNotebackByJob(Job job) {
-        return notebackRepository.findByJob(job).get();
+    public Optional<Noteback> getNotebackByJob(Job job) {
+        return notebackRepository.findByJob(job);
     }
 }

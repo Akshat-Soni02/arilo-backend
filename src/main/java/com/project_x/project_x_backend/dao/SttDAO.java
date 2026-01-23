@@ -3,6 +3,7 @@ package com.project_x.project_x_backend.dao;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -50,7 +51,7 @@ public class SttDAO {
         }
     }
 
-    public Stt getSttByJob(Job job) {
-        return sttRepository.findByJob(job).get();
+    public Optional<Stt> getSttByJob(Job job) {
+        return sttRepository.findByJob(job);
     }
 }

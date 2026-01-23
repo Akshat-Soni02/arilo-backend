@@ -48,7 +48,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,9 +63,6 @@ import org.springframework.data.jpa.domain.Specification;
 import com.project_x.project_x_backend.entity.NoteTag;
 import com.project_x.project_x_backend.entity.Stt;
 import com.project_x.project_x_backend.entity.Tag;
-import com.project_x.project_x_backend.entity.Noteback;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 @Service
 @Transactional
@@ -255,9 +251,9 @@ public class NoteService {
         }
         JobPollingRes res = new JobPollingRes();
         res.setStatus(job.getStatus());
-        if (job.getStatus() == JobStatus.COMPLETED) {
-            res.setStt(sttDAO.getSttByJob(job).getStt());
-            res.setNoteback(notebackDAO.getNotebackByJob(job).getNoteContent());
+        if (job.getStatus() == JobStatus.COMPLETED || job.getStatus() == JobStatus.PROCESSING) {
+            sttDAO.getSttByJob(job).ifPresent(stt -> res.setStt(stt.getStt()));
+            notebackDAO.getNotebackByJob(job).ifPresent(nb -> res.setNoteback(nb.getNoteContent()));
         }
         if (job.getStatus() == JobStatus.FAILED) {
             res.setErrorMessage(job.getErrorMessage());
