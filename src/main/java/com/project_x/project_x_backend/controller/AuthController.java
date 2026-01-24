@@ -1,9 +1,13 @@
 package com.project_x.project_x_backend.controller;
 
+import com.project_x.project_x_backend.dao.SubscriptionDAO;
 import com.project_x.project_x_backend.dto.AuthResponse;
 import com.project_x.project_x_backend.dto.UserResponse;
+import com.project_x.project_x_backend.dto.SubscriptionDTO.CreateSubscription;
 import com.project_x.project_x_backend.dto.authDTO.GoogleLoginRequest;
+import com.project_x.project_x_backend.entity.Subscription;
 import com.project_x.project_x_backend.entity.User;
+import com.project_x.project_x_backend.enums.PlanTypes;
 import com.project_x.project_x_backend.service.GoogleTokenService;
 import com.project_x.project_x_backend.service.JwtService;
 import com.project_x.project_x_backend.service.UserService;
@@ -30,6 +34,12 @@ public class AuthController {
 
     @Autowired
     private GoogleTokenService googleTokenService;
+
+    @Autowired
+    private SubscriptionDAO subscriptionDAO;
+
+    // TODO: add subscription checking after jwt validation to allow only supported
+    // apis
 
     @PostMapping("/google")
     public ResponseEntity<?> googleLogin(
@@ -163,6 +173,13 @@ public class AuthController {
                                     .set("picture", "https://via.placeholder.com/150")
                                     .setSubject("bypass-google-id")));
         }
+
+        Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(user.getId());
+
+        if (!subscription.isPresent()) {
+            subscriptionDAO.createSubscription(new CreateSubscription(user.getId(), PlanTypes.FREE));
+        }
+
         String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getId());
         AuthResponse response = new AuthResponse(
                 token,

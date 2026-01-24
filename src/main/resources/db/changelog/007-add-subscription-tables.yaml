@@ -1,0 +1,224 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-plans-table
+      author: akshat
+      changes:
+        - createTable:
+            tableName: plans
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: decimal(19,4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: varchar(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: duration_days
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+
+  - changeSet:
+      id: create-subscriptions-table
+      author: akshat
+      changes:
+        - createTable:
+            tableName: subscriptions
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: plan_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_date
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_date
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: auto_renew
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: cancelled_at
+                  type: timestamptz
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+
+        - addForeignKeyConstraint:
+            baseTableName: subscriptions
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_subscriptions_user
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: subscriptions
+            baseColumnNames: plan_id
+            referencedTableName: plans
+            referencedColumnNames: id
+            constraintName: fk_subscriptions_plan
+            onDelete: CASCADE
+
+  - changeSet:
+      id: create-payments-table
+      author: akshat
+      changes:
+        - createTable:
+            tableName: payments
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subscription_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider_payment_id
+                  type: varchar(255)
+              - column:
+                  name: provider_order_id
+                  type: varchar(255)
+              - column:
+                  name: amount
+                  type: decimal(19,4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: varchar(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: paid_at
+                  type: timestamptz
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+
+        - addForeignKeyConstraint:
+            baseTableName: payments
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_payments_user
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: payments
+            baseColumnNames: subscription_id
+            referencedTableName: subscriptions
+            referencedColumnNames: id
+            constraintName: fk_payments_subscription
+            onDelete: CASCADE
+
+  - changeSet:
+      id: seed-default-plans
+      author: akshat
+      changes:
+        - insert:
+            tableName: plans
+            columns:
+              - column:
+                  name: name
+                  value: FREE
+              - column:
+                  name: price
+                  valueNumeric: 0
+              - column:
+                  name: currency
+                  value: USD
+              - column:
+                  name: duration_days
+                  valueNumeric: 3650
+              - column:
+                  name: is_active
+                  valueBoolean: true
+        - insert:
+            tableName: plans
+            columns:
+              - column:
+                  name: name
+                  value: PRO_MONTHLY
+              - column:
+                  name: price
+                  valueNumeric: 5
+              - column:
+                  name: currency
+                  value: USD
+              - column:
+                  name: duration_days
+                  valueNumeric: 30
+              - column:
+                  name: is_active
+                  valueBoolean: true

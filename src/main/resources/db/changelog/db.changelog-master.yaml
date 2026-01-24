@@ -11,3 +11,7 @@ databaseChangeLog:
       file: db/changelog/005-remove-pipeline-output-id-from-llm-metrics.yaml
   - include:
       file: db/changelog/006-add-note-sentences-table.yaml
+  - include:
+      file: db/changelog/007-add-subscription-tables.yaml
+  - include:
+      file: db/changelog/008-update-subscription-auto-renew-default.yaml

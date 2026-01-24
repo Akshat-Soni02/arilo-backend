@@ -26,6 +26,7 @@ import com.project_x.project_x_backend.entity.PipelineStage;
 import com.project_x.project_x_backend.dao.PipelineStageDAO;
 import com.project_x.project_x_backend.dao.NotebackDAO;
 import com.project_x.project_x_backend.dao.SttDAO;
+import com.project_x.project_x_backend.dao.SubscriptionDAO;
 import com.project_x.project_x_backend.dao.TagDAO;
 import com.project_x.project_x_backend.enums.JobStatus;
 import com.project_x.project_x_backend.enums.NoteSortField;
@@ -33,6 +34,7 @@ import com.project_x.project_x_backend.enums.NoteStatus;
 import com.project_x.project_x_backend.enums.NoteType;
 import com.project_x.project_x_backend.enums.PipelineName;
 import com.project_x.project_x_backend.enums.PipelineStageStatus;
+import com.project_x.project_x_backend.enums.PlanTypes;
 import com.project_x.project_x_backend.enums.SortOrder;
 import com.project_x.project_x_backend.enums.TaskStatus;
 import com.project_x.project_x_backend.dto.pipelineDTO.CreatePipeline;
@@ -52,6 +54,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -62,6 +65,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import com.project_x.project_x_backend.entity.NoteTag;
 import com.project_x.project_x_backend.entity.Stt;
+import com.project_x.project_x_backend.entity.Subscription;
 import com.project_x.project_x_backend.entity.Tag;
 
 @Service
@@ -107,6 +111,9 @@ public class NoteService {
     private NoteSentenceDAO noteSentenceDAO;
 
     @Autowired
+    private SubscriptionDAO subscriptionDAO;
+
+    @Autowired
     private PubSubService pubSubService;
 
     @Autowired
@@ -114,6 +121,24 @@ public class NoteService {
 
     public NoteUploadResponse uploadNote(UUID userId, byte[] audioBytes, String contentType, boolean isMock)
             throws IOException {
+
+        Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(userId);
+        if (!subscription.isPresent()) {
+            throw new BadRequestException("User does not have an active subscription");
+        }
+
+        PlanTypes plan = subscription.get().getPlan().getName();
+        List<PipelineName> allowedPipelines = new ArrayList<>();
+        if (plan.equals(PlanTypes.FREE)) {
+            allowedPipelines.add(PipelineName.STT);
+
+            // TODO: remove this after testing
+            allowedPipelines.add(PipelineName.SMART);
+        } else if (plan.equals(PlanTypes.PRO_MONTHLY)) {
+            allowedPipelines.add(PipelineName.STT);
+            allowedPipelines.add(PipelineName.SMART);
+        }
+
         String normalizedContentType = "";
         if (!isMock) {
             normalizedContentType = normalizeContentType(contentType);
@@ -145,7 +170,8 @@ public class NoteService {
 
             String existingTagsString = String.join(",", existingTagsForEngine);
 
-            Job job = startEngineJob(userId, note.getId(), gcsUrl, existingTagsString, "", "", "audio/wav");
+            Job job = startEngineJob(userId, note.getId(), gcsUrl, existingTagsString, "", "", "audio/wav",
+                    allowedPipelines);
             return new NoteUploadResponse(note.getId(), note.getNoteType(), job.getId(), job.getStatus());
         } catch (Exception e) {
             note.setStatus(NoteStatus.FAILED);
@@ -272,15 +298,17 @@ public class NoteService {
 
     public Job startEngineJob(UUID userId, UUID noteId, String gcsUrl, String existingTags, String location,
             String timestamp,
-            String inputType) {
+            String inputType, List<PipelineName> allowedPipelines) {
         // create job
         // create pipeline stage row for each stage
         // add job to queue
 
         try {
             Job job = jobDAO.createJob(new CreateJob(userId, noteId));
-            pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.STT));
-            pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), PipelineName.SMART));
+
+            for (PipelineName pipelineName : allowedPipelines) {
+                pipelineStageDAO.createPipelineStage(new CreatePipeline(job.getId(), pipelineName));
+            }
 
             ObjectMapper mapper = new ObjectMapper();
 
@@ -294,6 +322,7 @@ public class NoteService {
             pubsubPayload.put("input_type", "audio/wav");
             pubsubPayload.put("gcs_audio_url", gcsUrl);
             pubsubPayload.put("existing_tags", existingTags);
+            pubsubPayload.put("allowed_pipelines", allowedPipelines);
 
             String jsonPayload = mapper.writeValueAsString(pubsubPayload);
             logger.info("JSON payload: {}", jsonPayload);
@@ -404,11 +433,6 @@ public class NoteService {
         if (status.equals(PipelineStageStatus.FAILED)) {
             noteResult = defaultOutputProvider.getFallbackNoteback();
         }
-
-        System.out.println(noteResult.toPrettyString());
-        System.out.println(noteResult.get("noteback_response").toPrettyString());
-        System.out.println(noteResult.get("noteback_response").get("noteback").toPrettyString());
-        System.out.println(noteResult.get("noteback_response").get("noteback").asText());
 
         notebackDAO.createNoteback(new CreateNoteback(jobId, userId,
                 noteResult.get("noteback_response").get("noteback").asText(), noteResult));

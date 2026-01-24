@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: update-subscription-auto-renew-default
+      author: antigravity
+      changes:
+        - addDefaultValue:
+            tableName: subscriptions
+            columnName: auto_renew
+            defaultValueBoolean: false
