@@ -19,11 +19,14 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Optional;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@Slf4j
 public class AuthController {
 
     @Autowired
@@ -44,6 +47,7 @@ public class AuthController {
     @PostMapping("/google")
     public ResponseEntity<?> googleLogin(
             @RequestBody GoogleLoginRequest request) {
+        log.info("Received Google login request. Bypass: {}", request.isBypassAuth());
         try {
             if (request.isBypassAuth()) {
                 return getBypassAuthResponse();
