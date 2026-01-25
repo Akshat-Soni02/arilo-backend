@@ -6,6 +6,7 @@ import com.project_x.project_x_backend.entity.Subscription;
 import com.project_x.project_x_backend.entity.User;
 import com.project_x.project_x_backend.enums.PlanTypes;
 import com.project_x.project_x_backend.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 @Service
 @Transactional
+@Slf4j
 public class UserService {
     @Autowired
     private UserRepository userRepository;
@@ -25,14 +27,17 @@ public class UserService {
     private SubscriptionDAO subscriptionDAO;
 
     public Optional<User> findByEmail(String email) {
+        log.debug("Finding user by email: {}", email);
         return userRepository.findActiveUserByEmail(email);
     }
 
     public Optional<User> findById(UUID id) {
+        log.debug("Finding user by id: {}", id);
         return userRepository.findActiveUserById(id);
     }
 
     public Optional<User> findByGoogleId(String googleId) {
+        log.debug("Finding user by googleId: {}", googleId);
         return userRepository.findActiveUserByGoogleId(googleId);
     }
 
@@ -42,51 +47,68 @@ public class UserService {
         String name = oAuth2User.getAttribute("name");
         String profilePictureUrl = oAuth2User.getAttribute("picture");
 
-        Optional<User> existingUser = userRepository.findActiveUserByGoogleId(googleId);
+        log.info("Creating or updating user from OAuth: {}", email);
+        try {
+            Optional<User> existingUser = userRepository.findActiveUserByGoogleId(googleId);
 
-        if (existingUser.isPresent()) {
-            User user = existingUser.get();
-            user.setEmail(email);
-            user.setName(name);
-            user.setProfilePictureUrl(profilePictureUrl);
-            return userRepository.save(user);
-        } else {
-
-            User newUser = new User(email, googleId, name, profilePictureUrl);
-            return userRepository.save(newUser);
+            if (existingUser.isPresent()) {
+                log.debug("Updating existing user: {}", email);
+                User user = existingUser.get();
+                user.setEmail(email);
+                user.setName(name);
+                user.setProfilePictureUrl(profilePictureUrl);
+                return userRepository.save(user);
+            } else {
+                log.info("Creating new user from OAuth: {}", email);
+                User newUser = new User(email, googleId, name, profilePictureUrl);
+                return userRepository.save(newUser);
+            }
+        } catch (Exception e) {
+            log.error("Failed to create or update user from OAuth for {}: {}", email, e.getMessage(), e);
+            throw e;
         }
     }
 
-    public User createOrUpdateFromGooglePayload(
-            Payload payload) {
+    public User createOrUpdateFromGooglePayload(Payload payload) {
         String email = payload.getEmail();
         String googleId = payload.getSubject();
         String name = (String) payload.get("name");
         String profilePictureUrl = (String) payload.get("picture");
 
-        Optional<User> existingUser = userRepository.findActiveUserByGoogleId(googleId);
+        log.info("Creating or updating user from Google payload: {}", email);
+        try {
+            Optional<User> existingUser = userRepository.findActiveUserByGoogleId(googleId);
 
-        // if user is existing, check if they have a valid subscription
-        // if they don't have a valid subscription, create free subscription for the
-        // user
+            // if user is existing, check if they have a valid subscription
+            // if they don't have a valid subscription, create free subscription for the
+            // user
 
-        if (existingUser.isPresent()) {
-            Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(existingUser.get().getId());
+            if (existingUser.isPresent()) {
+                log.debug("User {} exists, checking subscription status", email);
+                UUID userId = existingUser.get().getId();
+                Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(userId);
 
-            if (!subscription.isPresent()) {
-                subscriptionDAO.createSubscription(new CreateSubscription(existingUser.get().getId(), PlanTypes.FREE));
+                if (!subscription.isPresent()) {
+                    log.info("User {} has no active subscription, creating FREE plan subscription", email);
+                    subscriptionDAO.createSubscription(new CreateSubscription(userId, PlanTypes.FREE));
+                }
+
+                User user = existingUser.get();
+                user.setEmail(email);
+                user.setName(name);
+                user.setProfilePictureUrl(profilePictureUrl);
+                return userRepository.save(user);
+            } else {
+                log.info("Creating new user from Google payload: {}", email);
+                User newUser = new User(email, googleId, name, profilePictureUrl);
+                newUser = userRepository.save(newUser);
+                log.info("Newly created user ID: {}, initializing FREE subscription", newUser.getId());
+                subscriptionDAO.createSubscription(new CreateSubscription(newUser.getId(), PlanTypes.FREE));
+                return newUser;
             }
-
-            User user = existingUser.get();
-            user.setEmail(email);
-            user.setName(name);
-            user.setProfilePictureUrl(profilePictureUrl);
-            return userRepository.save(user);
-        } else {
-            User newUser = new User(email, googleId, name, profilePictureUrl);
-            userRepository.save(newUser);
-            subscriptionDAO.createSubscription(new CreateSubscription(newUser.getId(), PlanTypes.FREE));
-            return newUser;
+        } catch (Exception e) {
+            log.error("Failed to create or update user from Google payload for {}: {}", email, e.getMessage(), e);
+            throw e;
         }
     }
 }

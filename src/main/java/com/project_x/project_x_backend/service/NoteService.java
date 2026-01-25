@@ -42,12 +42,12 @@ import com.project_x.project_x_backend.dao.AnxietyScoreDAO;
 import com.project_x.project_x_backend.dto.AnxietyScoreDTO.CreateAnxietyScore;
 import com.project_x.project_x_backend.dto.NoteSentenceDTO.CreateNoteSentence;
 
-import org.apache.coyote.BadRequestException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -70,9 +70,8 @@ import com.project_x.project_x_backend.entity.Tag;
 
 @Service
 @Transactional
+@Slf4j
 public class NoteService {
-
-    private static final Logger logger = LoggerFactory.getLogger(NoteService.class);
 
     @Autowired
     private NoteRepository noteRepository;
@@ -121,10 +120,12 @@ public class NoteService {
 
     public NoteUploadResponse uploadNote(UUID userId, byte[] audioBytes, String contentType, boolean isMock)
             throws IOException {
+        log.info("Starting note upload process for user {}", userId);
 
         Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(userId);
         if (!subscription.isPresent()) {
-            throw new BadRequestException("User does not have an active subscription");
+            log.warn("Upload blocked: user {} does not have an active subscription", userId);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User does not have an active subscription");
         }
 
         PlanTypes plan = subscription.get().getPlan().getName();
@@ -174,17 +175,20 @@ public class NoteService {
                     allowedPipelines);
             return new NoteUploadResponse(note.getId(), note.getNoteType(), job.getId(), job.getStatus());
         } catch (Exception e) {
+            log.error("Failed to upload audio for user {}: {}", userId, e.getMessage(), e);
             note.setStatus(NoteStatus.FAILED);
             noteRepository.save(note);
-            throw new RuntimeException("Failed to upload audio: " + e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to upload audio: " + e.getMessage(), e);
         }
     }
 
+    // filter = { tagId = tag id, q = substring present in the stt, createdAfter =
+    // only get notes created after this timestamp inclusive, createdBefore = only
+    // get notes created before this timestamp inclusive, sort = sort by what (for
+    // now only supports createdAt), order = sorting order (asc | desc)}
     public List<NoteRes> getNotes(UUID userId, NoteFilter filter) {
-        // filter = { tagId = tag id, q = substring present in the stt, createdAfter =
-        // only get notes created after this timestamp inclusive, createdBefore = only
-        // get notes created before this timestamp inclusive, sort = sort by what (for
-        // now only supports createdAt), order = sorting order (asc | desc)}
+        log.info("Fetching notes for user {} with filter: {}", userId, filter);
         try {
             NoteFilter normFilter = normalize(filter);
             Specification<Note> spec = (root, query, cb) -> {
@@ -214,20 +218,24 @@ public class NoteService {
                 return cb.and(predicates.toArray(new Predicate[0]));
             };
 
-            String sortField = normFilter.getSort().equals(NoteSortField.CREATED_AT) ? "createdAt" : "createdAt";
             Sort.Direction direction = normFilter.getOrder() == SortOrder.ASC ? Sort.Direction.ASC
                     : Sort.Direction.DESC;
 
-            List<Note> notes = noteRepository.findAll(spec, Sort.by(direction, sortField));
+            // TODO: add other sort fields
+            String sortField = normFilter.getSort() == NoteSortField.CREATED_AT ? "createdAt" : "createdAt";
 
+            List<Note> notes = noteRepository.findAll(spec, Sort.by(direction, sortField));
+            log.debug("Found {} notes for user {}", notes.size(), userId);
             return notes.stream().map(this::mapToNoteRes).collect(Collectors.toList());
         } catch (Exception e) {
-            throw new RuntimeException("Failed to get notes: " + e.getMessage(), e);
+            log.error("Failed to get notes for user {}: {}", userId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to get notes: " + e.getMessage(), e);
         }
-
     }
 
     public NoteRes mapToNoteRes(Note note) {
+        log.debug("Mapping note {} to response DTO", note.getId());
         NoteRes res = new NoteRes();
         res.setNoteId(note.getId());
         res.setNoteType(note.getNoteType());
@@ -243,10 +251,11 @@ public class NoteService {
         return res;
     }
 
-    public NoteFilter normalize(NoteFilter filter) throws Exception {
+    public NoteFilter normalize(NoteFilter filter) {
+        log.info("Normalizing note filter: {}", filter);
         if (filter.getCreatedAfter() != null && filter.getCreatedBefore() != null
                 && filter.getCreatedAfter().isAfter(filter.getCreatedBefore())) {
-            throw new BadRequestException("createdAfter cannot be after createdBefore");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "createdAfter cannot be after createdBefore");
         }
 
         if (filter.getQ() != null && !filter.getQ().isBlank()) {
@@ -271,8 +280,10 @@ public class NoteService {
     }
 
     public JobPollingRes getPollingStatus(UUID userId, UUID jobId) {
+        log.info("Getting polling status for job {} for user {}", jobId, userId);
         Job job = jobDAO.getUserJobById(jobId, userId);
         if (job == null) {
+            log.warn("Job {} not found for user {}", jobId, userId);
             throw new RuntimeException("Job not found");
         }
         JobPollingRes res = new JobPollingRes();
@@ -288,17 +299,21 @@ public class NoteService {
     }
 
     public void deleteNote(UUID userId, UUID noteId) {
+        log.info("Deleting note {} for user {}", noteId, userId);
         Note note = noteRepository.findById(noteId).orElseThrow(() -> new RuntimeException("Note not found"));
         if (!note.getUserId().equals(userId)) {
+            log.warn("User {} attempted to delete note {} which does not belong to them", userId, noteId);
             throw new RuntimeException("User is not authorized to delete this note");
         }
 
         noteDAO.deleteNote(userId, noteId);
+        log.info("Note {} deleted successfully for user {}", noteId, userId);
     }
 
     public Job startEngineJob(UUID userId, UUID noteId, String gcsUrl, String existingTags, String location,
             String timestamp,
             String inputType, List<PipelineName> allowedPipelines) {
+        log.info("Starting engine job for note {} for user {}", noteId, userId);
         // create job
         // create pipeline stage row for each stage
         // add job to queue
@@ -325,26 +340,28 @@ public class NoteService {
             pubsubPayload.put("allowed_pipelines", allowedPipelines);
 
             String jsonPayload = mapper.writeValueAsString(pubsubPayload);
-            logger.info("JSON payload: {}", jsonPayload);
+            log.info("JSON payload: {}", jsonPayload);
             pubSubService.publishMessage(jsonPayload);
+            log.info("Engine job {} started and message published for note {}", job.getId(), noteId);
             return job;
         } catch (Exception e) {
-            logger.error("Failed to start engine job for note {}: {}", noteId, e.getMessage());
+            log.error("Failed to start engine job for note {}: {}", noteId, e.getMessage(), e);
             return null;
         }
     }
 
     // TODO: handle current note sentences saving, which will come with smart
     // callback
+    @Transactional
     public boolean handleEngineCallback(EngineCallbackReq engineCallbackReq) {
-        logger.info(engineCallbackReq.toString());
+        log.info(engineCallbackReq.toString());
         if (engineCallbackReq.getStatus().equals(PipelineStageStatus.FAILED)) {
             checkAndMarkJobFailed(engineCallbackReq);
         } else if (engineCallbackReq.getStatus().equals(PipelineStageStatus.COMPLETED)) {
             checkAndMarkJobCompleted(engineCallbackReq);
         }
 
-        logger.info(
+        log.info(
                 "Job id: {}, note id: {}, user id: {}, input type: {}, Pipeline stage: {}, status: {}",
                 engineCallbackReq.getJobId(), engineCallbackReq.getNoteId(), engineCallbackReq.getUserId(),
                 engineCallbackReq.getInputType(), engineCallbackReq.getPipelineStage(), engineCallbackReq.getStatus());
@@ -361,9 +378,10 @@ public class NoteService {
     }
 
     public void checkAndMarkJobFailed(EngineCallbackReq engineCallbackReq) {
+        log.info("Checking and marking job {} as failed if all stages failed", engineCallbackReq.getJobId());
         List<PipelineStage> pipelineStages = pipelineStageDAO.getPipelineStagesByJobId(engineCallbackReq.getJobId());
-        System.out.println("Pipeline stages: " + pipelineStages.toString());
-        System.out.println("Pipeline stage status: " + engineCallbackReq.getStatus());
+        log.debug("Pipeline stages for job {}: {}", engineCallbackReq.getJobId(), pipelineStages);
+        log.debug("Current stage status from callback: {}", engineCallbackReq.getStatus());
 
         boolean allStagesFailed = true;
         for (PipelineStage stage : pipelineStages) {
@@ -375,12 +393,14 @@ public class NoteService {
 
         if (allStagesFailed) {
             jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.FAILED);
+            log.warn("Job {} marked as FAILED because all its stages failed.", engineCallbackReq.getJobId());
         }
     }
 
     public void checkAndMarkJobCompleted(EngineCallbackReq engineCallbackReq) {
+        log.info("Checking and marking job {} as completed if all stages completed", engineCallbackReq.getJobId());
         List<PipelineStage> pipelineStages = pipelineStageDAO.getPipelineStagesByJobId(engineCallbackReq.getJobId());
-        System.out.println("Pipeline stage status: " + engineCallbackReq.getStatus());
+        log.debug("Current stage status from callback: {}", engineCallbackReq.getStatus());
 
         boolean allStagesCompleted = true;
         for (PipelineStage stage : pipelineStages) {
@@ -391,7 +411,7 @@ public class NoteService {
         }
 
         if (allStagesCompleted) {
-            System.out.println("All stages completed for job: " + engineCallbackReq.getJobId());
+            log.info("All stages completed for job: {}", engineCallbackReq.getJobId());
             jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.COMPLETED);
         }
     }

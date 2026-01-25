@@ -8,8 +8,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.TopicName;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +16,8 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Slf4j
 public class PubSubService {
-
-    private static final Logger logger = LoggerFactory.getLogger(PubSubService.class);
 
     @Value("${spring.gcs.project.id}")
     private String projectId;
@@ -28,6 +26,7 @@ public class PubSubService {
     private String topicId;
 
     public void publishMessage(String message) {
+        log.info("Preparing to publish message to topic: {}", topicId);
         TopicName topicName = TopicName.of(projectId, topicId);
         Publisher publisher = null;
 
@@ -37,6 +36,7 @@ public class PubSubService {
             ByteString data = ByteString.copyFromUtf8(message);
             PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
 
+            log.debug("Publishing message payload: {}", message);
             ApiFuture<String> future = publisher.publish(pubsubMessage);
 
             ApiFutures.addCallback(
@@ -45,26 +45,28 @@ public class PubSubService {
 
                         @Override
                         public void onFailure(Throwable t) {
-                            logger.error("Error publishing message to topic: {}", topicId, t);
+                            log.error("Failed to publish message to topic: {}. Error: {}", topicId, t.getMessage(), t);
                         }
 
                         @Override
                         public void onSuccess(String messageId) {
-                            logger.info("Published message ID: {} to topic: {}", messageId, topicId);
+                            log.info("Successfully published message. ID: {} to topic: {}", messageId, topicId);
                         }
                     },
                     MoreExecutors.directExecutor());
 
         } catch (IOException e) {
-            logger.error("Error creating publisher for topic: {}", topicId, e);
+            log.error("Could not create PubSub publisher for topic: {}. Error: {}", topicId, e.getMessage(), e);
         } finally {
             if (publisher != null) {
                 // When finished with the publisher, shutdown to free up resources.
                 try {
+                    log.debug("Shutting down PubSub publisher for topic: {}", topicId);
                     publisher.shutdown();
                     publisher.awaitTermination(1, TimeUnit.MINUTES);
                 } catch (InterruptedException e) {
-                    logger.error("Error shutting down publisher", e);
+                    log.error("Interrupted while shutting down PubSub publisher: {}", e.getMessage(), e);
+                    Thread.currentThread().interrupt();
                 }
             }
         }
