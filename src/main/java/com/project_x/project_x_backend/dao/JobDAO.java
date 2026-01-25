@@ -18,6 +18,10 @@ public class JobDAO {
     @Autowired
     private JobRepository jobRepository;
 
+    public List<Job> getAllJobs() {
+        return jobRepository.findAll();
+    }
+
     public Job getJobById(UUID id) {
         log.debug("Fetching job by ID: {}", id);
         return jobRepository.findById(id).orElse(null);
@@ -100,7 +104,7 @@ public class JobDAO {
         return jobRepository.findByNoteId(note.getId());
     }
 
-    public List<Job> getAllJobs(UUID userId) {
+    public List<Job> getUserJobs(UUID userId) {
         log.debug("Fetching all jobs for user {}", userId);
         return jobRepository.findAllByUserId(userId);
     }

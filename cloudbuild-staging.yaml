@@ -79,6 +79,8 @@ steps:
       - "ARILO_BACKEND_LOGGING_LEVEL_GOOGLE_CLOUD=ARILO_BACKEND_LOGGING_LEVEL_GOOGLE_CLOUD_STAGING:latest"
       - "--set-secrets"
       - "ARILO_BACKEND_PUBSUB_TOPIC_NAME=ARILO_BACKEND_PUBSUB_TOPIC_NAME_STAGING:latest"
+      - "--set-secrets"
+      - "ARILO_BACKEND_ADMIN_SECRET=ARILO_BACKEND_ADMIN_SECRET_STAGING:latest"
     id: "deploy-arilo-backend"
     waitFor: ["push-arilo-backend"]
 

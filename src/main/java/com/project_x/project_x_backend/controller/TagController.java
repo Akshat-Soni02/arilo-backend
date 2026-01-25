@@ -72,7 +72,6 @@ public class TagController {
             }
 
             Tag tag = tagService.updateTag(userId, id, tagUpdateRequest);
-            log.info("Successfully updated tag {} for user {}", id, userId);
             return ResponseEntity.ok(new TagCreateResponse(tag.getId(), tag.getName(), tag.getDescription(),
                     tag.getCreatedBy(), tag.getCreatedAt()));
         } catch (Exception e) {

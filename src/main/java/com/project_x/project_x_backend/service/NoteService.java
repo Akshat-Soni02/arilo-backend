@@ -350,8 +350,6 @@ public class NoteService {
         }
     }
 
-    // TODO: handle current note sentences saving, which will come with smart
-    // callback
     @Transactional
     public boolean handleEngineCallback(EngineCallbackReq engineCallbackReq) {
         log.info(engineCallbackReq.toString());

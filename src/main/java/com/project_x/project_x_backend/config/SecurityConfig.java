@@ -25,6 +25,9 @@ public class SecurityConfig {
         @Autowired
         private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+        @Autowired
+        private AdminSecurityFilter adminSecurityFilter;
+
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
@@ -42,6 +45,8 @@ public class SecurityConfig {
                                                                 "/h2-console/**")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
+                                .addFilterBefore(adminSecurityFilter,
+                                                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(jwtAuthenticationFilter,
                                                 org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                                 .exceptionHandling(ex -> ex

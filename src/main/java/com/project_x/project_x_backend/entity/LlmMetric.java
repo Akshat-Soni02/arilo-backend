@@ -26,10 +26,6 @@ public class LlmMetric {
     @JoinColumn(name = "pipeline_stage_id", nullable = false)
     private PipelineStage pipelineStage;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pipeline_output_id", nullable = false)
-    private PipelineOutput pipelineOutput;
-
     @Column(name = "llm_call", nullable = false)
     private String llmCall;
 

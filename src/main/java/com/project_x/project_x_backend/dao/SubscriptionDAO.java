@@ -32,6 +32,10 @@ public class SubscriptionDAO {
         @Autowired
         private UserRepository userRepository;
 
+        public List<Subscription> getAllSubscriptions() {
+                return subscriptionRepository.findAll();
+        }
+
         @Transactional
         public Subscription createSubscription(CreateSubscription request) {
                 log.info("Creating {} subscription for user {}", request.getPlanType(), request.getUserId());
