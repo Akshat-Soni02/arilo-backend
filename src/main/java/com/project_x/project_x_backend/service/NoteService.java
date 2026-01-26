@@ -534,7 +534,7 @@ public class NoteService {
                         audioBytes[2] == 'a' && audioBytes[3] == 'C';
 
             case "audio/mp4":
-            case "audio/x-m4a":
+            case "audio/m4a":
                 return audioBytes.length > 8 &&
                         audioBytes[4] == 'f' && audioBytes[5] == 't' &&
                         audioBytes[6] == 'y' && audioBytes[7] == 'p';
@@ -549,7 +549,7 @@ public class NoteService {
                 contentType.equals("audio/wav") ||
                 contentType.equals("audio/x-wav") ||
                 contentType.equals("audio/mp4") ||
-                contentType.equals("audio/x-m4a") ||
+                contentType.equals("audio/m4a") ||
                 contentType.equals("audio/flac");
     }
 }

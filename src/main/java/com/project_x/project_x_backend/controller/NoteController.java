@@ -33,7 +33,7 @@ public class NoteController {
     // TODO: move this config and lessen supported types
     private static final List<String> SUPPORTED_AUDIO_TYPES = Arrays.asList(
             "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4",
-            "audio/x-m4a", "audio/flac", "audio/wave");
+            "audio/m4a", "audio/flac", "audio/wave");
 
     @Autowired
     private NoteService noteService;

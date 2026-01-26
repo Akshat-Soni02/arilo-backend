@@ -139,7 +139,7 @@ public class GcsStorageService {
             case "audio/x-wav":
                 return "wav";
             case "audio/mp4":
-            case "audio/x-m4a":
+            case "audio/m4a":
                 return "m4a";
             case "audio/flac":
                 return "flac";
