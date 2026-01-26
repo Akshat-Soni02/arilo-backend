@@ -2,6 +2,7 @@ package com.project_x.project_x_backend.controller;
 
 import com.project_x.project_x_backend.dao.SubscriptionDAO;
 import com.project_x.project_x_backend.dto.AuthResponse;
+import com.project_x.project_x_backend.dto.SubscriptionDTO.SubscriptionDetailDTO;
 import com.project_x.project_x_backend.dto.UserResponse;
 import com.project_x.project_x_backend.dto.SubscriptionDTO.CreateSubscription;
 import com.project_x.project_x_backend.dto.authDTO.GoogleLoginRequest;
@@ -58,13 +59,17 @@ public class AuthController {
 
             String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getId());
 
+            Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(user.getId());
+            SubscriptionDetailDTO subscriptionDetail = subscription.map(SubscriptionDetailDTO::new).orElse(null);
+
             AuthResponse response = new AuthResponse(
                     token,
                     "Bearer",
                     user.getId(),
                     user.getEmail(),
                     user.getName(),
-                    user.getProfilePictureUrl());
+                    user.getProfilePictureUrl(),
+                    subscriptionDetail);
 
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
@@ -87,6 +92,9 @@ public class AuthController {
             // Generate JWT token
             String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getId());
 
+            Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(user.getId());
+            SubscriptionDetailDTO subscriptionDetail = subscription.map(SubscriptionDetailDTO::new).orElse(null);
+
             // Create response
             AuthResponse response = new AuthResponse(
                     token,
@@ -94,7 +102,8 @@ public class AuthController {
                     user.getId(),
                     user.getEmail(),
                     user.getName(),
-                    user.getProfilePictureUrl());
+                    user.getProfilePictureUrl(),
+                    subscriptionDetail);
 
             return ResponseEntity.ok(response);
 
@@ -126,7 +135,11 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
-            UserResponse userResponse = new UserResponse(userOpt.get());
+            User user = userOpt.get();
+            Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(user.getId());
+            SubscriptionDetailDTO subscriptionDetail = subscription.map(SubscriptionDetailDTO::new).orElse(null);
+
+            UserResponse userResponse = new UserResponse(user, subscriptionDetail);
             return ResponseEntity.ok(userResponse);
 
         } catch (Exception e) {
@@ -181,8 +194,11 @@ public class AuthController {
         Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(user.getId());
 
         if (!subscription.isPresent()) {
-            subscriptionDAO.createSubscription(new CreateSubscription(user.getId(), PlanTypes.FREE));
+            subscription = Optional
+                    .of(subscriptionDAO.createSubscription(new CreateSubscription(user.getId(), PlanTypes.FREE)));
         }
+
+        SubscriptionDetailDTO subscriptionDetail = subscription.map(SubscriptionDetailDTO::new).orElse(null);
 
         String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getId());
         AuthResponse response = new AuthResponse(
@@ -191,7 +207,8 @@ public class AuthController {
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
-                user.getProfilePictureUrl());
+                user.getProfilePictureUrl(),
+                subscriptionDetail);
         return ResponseEntity.ok(response);
     }
 }

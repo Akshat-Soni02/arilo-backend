@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-note-limits-to-plans
+      author: antigravity
+      changes:
+        - addColumn:
+            tableName: plans
+            columns:
+              - column:
+                  name: note_daily_limit
+                  type: integer
+                  defaultValueNumeric: 0
+              - column:
+                  name: note_monthly_limit
+                  type: integer
+                  defaultValueNumeric: 0
+        - update:
+            tableName: plans
+            columns:
+              - column:
+                  name: note_daily_limit
+                  valueNumeric: 5
+              - column:
+                  name: note_monthly_limit
+                  valueNumeric: 100
+            where: name = 'FREE'
+        - update:
+            tableName: plans
+            columns:
+              - column:
+                  name: note_daily_limit
+                  valueNumeric: -1
+              - column:
+                  name: note_monthly_limit
+                  valueNumeric: 300
+            where: name = 'PRO_MONTHLY'

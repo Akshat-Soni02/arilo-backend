@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.project_x.project_x_backend.entity.User;
+import com.project_x.project_x_backend.dto.SubscriptionDTO.SubscriptionDetailDTO;
 
 @Getter
 @Setter
@@ -20,6 +21,7 @@ public class UserResponse {
     private String name;
     private String profilePictureUrl;
     private Instant createdAt;
+    private SubscriptionDetailDTO subscription;
 
     public UserResponse(User user) {
         this.id = user.getId();
@@ -27,5 +29,10 @@ public class UserResponse {
         this.name = user.getName();
         this.profilePictureUrl = user.getProfilePictureUrl();
         this.createdAt = user.getCreatedAt();
+    }
+
+    public UserResponse(User user, SubscriptionDetailDTO subscription) {
+        this(user);
+        this.subscription = subscription;
     }
 }

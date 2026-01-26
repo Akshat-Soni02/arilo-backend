@@ -38,6 +38,12 @@ public class Plan {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    @Column(name = "note_daily_limit", nullable = false)
+    private Integer noteDailyLimit;
+
+    @Column(name = "note_monthly_limit", nullable = false)
+    private Integer noteMonthlyLimit;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
