@@ -15,11 +15,14 @@ public class DefaultOutputProvider {
 
     public JsonNode getFallbackStt() {
         ObjectNode node = mapper.createObjectNode();
-        node.put("stt", "Something went wrong, please record again");
-        node.put("language", "unknown");
-        node.set("tasks", mapper.createArrayNode());
-        node.put("anxiety_score", 0);
-        node.set("tags", mapper.createArrayNode());
+        ObjectNode sttResponse = mapper.createObjectNode();
+        sttResponse.put("stt", "Something went wrong, please record again");
+        sttResponse.put("language", "unknown");
+        sttResponse.set("tasks", mapper.createArrayNode());
+        sttResponse.put("anxiety_score", 0);
+        sttResponse.set("tags", mapper.createArrayNode());
+        node.set("stt_response", sttResponse);
+        node.set("sentences_with_embeddings", mapper.createArrayNode());
         return node;
     }
 

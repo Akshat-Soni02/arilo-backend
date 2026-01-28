@@ -134,7 +134,7 @@ public class NoteService {
             allowedPipelines.add(PipelineName.STT);
 
             // TODO: remove this after testing
-            allowedPipelines.add(PipelineName.SMART);
+            // allowedPipelines.add(PipelineName.SMART);
         } else if (plan.equals(PlanTypes.PRO_MONTHLY)) {
             allowedPipelines.add(PipelineName.STT);
             allowedPipelines.add(PipelineName.SMART);
@@ -171,8 +171,9 @@ public class NoteService {
 
             String existingTagsString = String.join(",", existingTagsForEngine);
 
+            // TODO: update input type and other missing fields
             Job job = startEngineJob(userId, note.getId(), gcsUrl, existingTagsString, "", "", "audio/wav",
-                    allowedPipelines);
+                    allowedPipelines, plan);
             return new NoteUploadResponse(note.getId(), note.getNoteType(), job.getId(), job.getStatus());
         } catch (Exception e) {
             log.error("Failed to upload audio for user {}: {}", userId, e.getMessage(), e);
@@ -312,7 +313,7 @@ public class NoteService {
 
     public Job startEngineJob(UUID userId, UUID noteId, String gcsUrl, String existingTags, String location,
             String timestamp,
-            String inputType, List<PipelineName> allowedPipelines) {
+            String inputType, List<PipelineName> allowedPipelines, PlanTypes planType) {
         log.info("Starting engine job for note {} for user {}", noteId, userId);
         // create job
         // create pipeline stage row for each stage
@@ -327,7 +328,6 @@ public class NoteService {
 
             ObjectMapper mapper = new ObjectMapper();
 
-            // TODO: pass tags
             Map<String, Object> pubsubPayload = new HashMap<>();
             pubsubPayload.put("job_id", job.getId());
             pubsubPayload.put("note_id", noteId);
@@ -338,6 +338,7 @@ public class NoteService {
             pubsubPayload.put("gcs_audio_url", gcsUrl);
             pubsubPayload.put("existing_tags", existingTags);
             pubsubPayload.put("allowed_pipelines", allowedPipelines);
+            pubsubPayload.put("plan_type", planType);
 
             String jsonPayload = mapper.writeValueAsString(pubsubPayload);
             log.info("JSON payload: {}", jsonPayload);
@@ -352,7 +353,6 @@ public class NoteService {
 
     @Transactional
     public boolean handleEngineCallback(EngineCallbackReq engineCallbackReq) {
-        log.info(engineCallbackReq.toString());
         if (engineCallbackReq.getStatus().equals(PipelineStageStatus.FAILED)) {
             checkAndMarkJobFailed(engineCallbackReq);
         } else if (engineCallbackReq.getStatus().equals(PipelineStageStatus.COMPLETED)) {
@@ -365,16 +365,16 @@ public class NoteService {
                 engineCallbackReq.getInputType(), engineCallbackReq.getPipelineStage(), engineCallbackReq.getStatus());
 
         if (engineCallbackReq.getPipelineStage().equals(PipelineName.STT)) {
-            updateUserStt(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getStatus(),
-                    engineCallbackReq.getOutput());
+            updateUserStt(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getNoteId(),
+                    engineCallbackReq.getStatus(), engineCallbackReq.getOutput());
         } else if (engineCallbackReq.getPipelineStage().equals(PipelineName.SMART)) {
             updateUserNote(engineCallbackReq.getJobId(), engineCallbackReq.getUserId(), engineCallbackReq.getNoteId(),
-                    engineCallbackReq.getStatus(),
-                    engineCallbackReq.getOutput());
+                    engineCallbackReq.getStatus(), engineCallbackReq.getOutput());
         }
         return engineCallbackReq.getStatus().equals(PipelineStageStatus.COMPLETED);
     }
 
+    // if all stages failed or executed but last one failed then mark job as failed
     public void checkAndMarkJobFailed(EngineCallbackReq engineCallbackReq) {
         log.info("Checking and marking job {} as failed if all stages failed", engineCallbackReq.getJobId());
         List<PipelineStage> pipelineStages = pipelineStageDAO.getPipelineStagesByJobId(engineCallbackReq.getJobId());
@@ -382,14 +382,19 @@ public class NoteService {
         log.debug("Current stage status from callback: {}", engineCallbackReq.getStatus());
 
         boolean allStagesFailed = true;
+        boolean allStagesExecuted = true;
+
         for (PipelineStage stage : pipelineStages) {
             if (!stage.getStatus().equals(PipelineStageStatus.FAILED)) {
                 allStagesFailed = false;
-                break;
+            }
+            if (stage.getStatus().equals(PipelineStageStatus.IN_PROGRESS)
+                    || stage.getStatus().equals(PipelineStageStatus.PENDING)) {
+                allStagesExecuted = false;
             }
         }
 
-        if (allStagesFailed) {
+        if (allStagesFailed || allStagesExecuted) {
             jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.FAILED);
             log.warn("Job {} marked as FAILED because all its stages failed.", engineCallbackReq.getJobId());
         }
@@ -401,30 +406,40 @@ public class NoteService {
         log.debug("Current stage status from callback: {}", engineCallbackReq.getStatus());
 
         boolean allStagesCompleted = true;
+        boolean allStagesExecuted = true;
+
         for (PipelineStage stage : pipelineStages) {
             if (!stage.getStatus().equals(PipelineStageStatus.COMPLETED)) {
                 allStagesCompleted = false;
-                break;
+            }
+
+            if (stage.getStatus().equals(PipelineStageStatus.IN_PROGRESS)
+                    || stage.getStatus().equals(PipelineStageStatus.PENDING)) {
+                allStagesExecuted = false;
             }
         }
 
         if (allStagesCompleted) {
             log.info("All stages completed for job: {}", engineCallbackReq.getJobId());
             jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.COMPLETED);
+        } else if (allStagesExecuted) {
+            log.info("All stages executed for job: {}, but not all completed", engineCallbackReq.getJobId());
+            jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.FAILED);
         }
     }
 
-    public void updateUserStt(UUID jobId, UUID userId, PipelineStageStatus status, JsonNode sttResult) {
+    public void updateUserStt(UUID jobId, UUID userId, UUID noteId, PipelineStageStatus status, JsonNode sttResult) {
         if (status.equals(PipelineStageStatus.FAILED)) {
             sttResult = defaultOutputProvider.getFallbackStt();
         }
 
         // save stt
         sttDAO.createStt(
-                new CreateStt(jobId, userId, sttResult.get("language").asText(), sttResult.get("stt").asText()));
+                new CreateStt(jobId, userId, sttResult.get("stt_response").get("language").asText(),
+                        sttResult.get("stt_response").get("stt").asText()));
 
         // save extracted tags
-        JsonNode tagsNode = sttResult.get("tags");
+        JsonNode tagsNode = sttResult.get("stt_response").get("tags");
         if (tagsNode != null && tagsNode.isArray()) {
             for (JsonNode tagNode : tagsNode) {
                 extractedTagDAO.addExtractedTag(new CreateTag(jobId, userId, tagNode.asText()));
@@ -432,7 +447,7 @@ public class NoteService {
         }
 
         // save extracted tasks
-        JsonNode tasksNode = sttResult.get("tasks");
+        JsonNode tasksNode = sttResult.get("stt_response").get("tasks");
         if (tasksNode != null && tasksNode.isArray()) {
             for (JsonNode taskNode : tasksNode) {
                 extractedTaskDAO
@@ -441,13 +456,19 @@ public class NoteService {
         }
 
         // save anxiety score
-        if (sttResult.has("anxiety_score")) {
+        if (sttResult.get("stt_response").has("anxiety_score")) {
             anxietyScoreDAO
-                    .createAnxietyScore(new CreateAnxietyScore(jobId, userId, sttResult.get("anxiety_score").asInt()));
+                    .createAnxietyScore(new CreateAnxietyScore(jobId, userId,
+                            sttResult.get("stt_response").get("anxiety_score").asInt()));
+        }
+
+        // save note sentences
+        if (sttResult.has("sentences_with_embeddings")) {
+            addNoteSentences(noteId, userId, sttResult.get("sentences_with_embeddings"));
         }
     }
 
-    public void updateUserNote(UUID jobId, UUID userId, UUID note_id, PipelineStageStatus status, JsonNode noteResult) {
+    public void updateUserNote(UUID jobId, UUID userId, UUID noteId, PipelineStageStatus status, JsonNode noteResult) {
         if (status.equals(PipelineStageStatus.FAILED)) {
             noteResult = defaultOutputProvider.getFallbackNoteback();
         }
@@ -456,7 +477,12 @@ public class NoteService {
                 noteResult.get("noteback_response").get("noteback").asText(), noteResult));
 
         // save note sentences
-        JsonNode sentencesNode = noteResult.get("sentences_with_embeddings");
+        if (noteResult.has("sentences_with_embeddings")) {
+            addNoteSentences(noteId, userId, noteResult.get("sentences_with_embeddings"));
+        }
+    }
+
+    public void addNoteSentences(UUID noteId, UUID userId, JsonNode sentencesNode) {
         if (sentencesNode != null && sentencesNode.isArray()) {
             List<CreateNoteSentence> sentencesList = new ArrayList<>();
             for (JsonNode sentenceNode : sentencesNode) {
@@ -476,9 +502,11 @@ public class NoteService {
                         embeddingList));
             }
 
+            log.info("Saving {} sentences for note id: {}", sentencesList.size(), noteId);
+
             // Batch save
             if (!sentencesList.isEmpty()) {
-                noteSentenceDAO.createNoteSentences(note_id, userId, sentencesList);
+                noteSentenceDAO.createNoteSentences(noteId, userId, sentencesList);
             }
         }
     }
