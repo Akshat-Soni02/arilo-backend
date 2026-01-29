@@ -1,0 +1,75 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-usage-tracking-tables
+      author: akshat
+      changes:
+        - createTable:
+            tableName: usage_cycles
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cycle_start
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cycle_end
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notes_used
+                  type: integer
+                  defaultValueNumeric: 0
+        - addForeignKeyConstraint:
+            baseTableName: usage_cycles
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_usage_cycles_user
+            onDelete: CASCADE
+
+        - createTable:
+            tableName: user_daily_usages
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: usage_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notes_used
+                  type: integer
+                  defaultValueNumeric: 0
+        - addUniqueConstraint:
+            tableName: user_daily_usages
+            columnNames: user_id, usage_date
+            constraintName: unique_user_daily_usage
+        - addForeignKeyConstraint:
+            baseTableName: user_daily_usages
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_user_daily_usages_user
+            onDelete: CASCADE

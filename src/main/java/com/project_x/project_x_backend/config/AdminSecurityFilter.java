@@ -31,7 +31,7 @@ public class AdminSecurityFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        if (path.startsWith("/admin")) {
+        if (path.startsWith("/api/v1/admin")) {
             String signature = request.getHeader("X-Admin-Signature");
             String timestamp = request.getHeader("X-Admin-Timestamp");
 

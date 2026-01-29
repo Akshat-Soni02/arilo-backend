@@ -3,10 +3,12 @@ package com.project_x.project_x_backend.controller;
 import com.project_x.project_x_backend.dto.jobDTO.EngineCallbackRes;
 import com.project_x.project_x_backend.dto.jobDTO.JobPollingRes;
 import com.project_x.project_x_backend.service.NoteService;
+import com.project_x.project_x_backend.service.UserService;
 import com.project_x.project_x_backend.service.AuthService;
 
 import jakarta.validation.Valid;
 
+import com.project_x.project_x_backend.dto.LimitRes;
 import com.project_x.project_x_backend.dto.NoteDTO.NoteFilter;
 import com.project_x.project_x_backend.dto.NoteDTO.NoteRes;
 import com.project_x.project_x_backend.dto.NoteDTO.NoteUploadResponse;
@@ -40,6 +42,9 @@ public class NoteController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private UserService userService;
 
     // TODO: check audio length and suspend if more than max allowed
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -186,5 +191,23 @@ public class NoteController {
         log.error("File size exceeded maximum limit: {}", exc.getMessage());
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
                 .body("File size exceeds maximum allowed size");
+    }
+
+    @GetMapping("/usage")
+    public ResponseEntity<LimitRes> getUsage(@RequestHeader("Authorization") String authorization) {
+        log.info("Getting usage");
+        try {
+            UUID userId = authService.extractUserIdFromToken(authorization);
+            if (userId == null) {
+                log.warn("Unauthorized limit attempt");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            LimitRes limitRes = userService.getUsages(userId);
+            log.info("Limit for user {} is {}", userId, limitRes);
+            return ResponseEntity.ok(limitRes);
+        } catch (Exception e) {
+            log.error("Error getting limit: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

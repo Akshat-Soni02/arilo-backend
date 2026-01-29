@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/008-update-subscription-auto-renew-default.yaml
   - include:
       file: db/changelog/009-add-note-limits-to-plans.yaml
+  - include:
+      file: db/changelog/010-add-usage-tracking-tables.yaml

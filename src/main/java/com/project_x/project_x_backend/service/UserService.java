@@ -1,9 +1,16 @@
 package com.project_x.project_x_backend.service;
 
 import com.project_x.project_x_backend.dao.SubscriptionDAO;
+import com.project_x.project_x_backend.dao.UsageCycleDAO;
+import com.project_x.project_x_backend.dao.UserDailyUsageDAO;
+import com.project_x.project_x_backend.entity.UserDailyUsage;
+import com.project_x.project_x_backend.dto.LimitRes;
 import com.project_x.project_x_backend.dto.SubscriptionDTO.CreateSubscription;
+import com.project_x.project_x_backend.entity.Plan;
 import com.project_x.project_x_backend.entity.Subscription;
+import com.project_x.project_x_backend.entity.UsageCycle;
 import com.project_x.project_x_backend.entity.User;
+import com.project_x.project_x_backend.enums.LimitStatus;
 import com.project_x.project_x_backend.enums.PlanTypes;
 import com.project_x.project_x_backend.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +33,12 @@ public class UserService {
     @Autowired
     private SubscriptionDAO subscriptionDAO;
 
+    @Autowired
+    private UserDailyUsageDAO userDailyUsageDAO;
+
+    @Autowired
+    private UsageCycleDAO usageCycleDAO;
+
     public Optional<User> findByEmail(String email) {
         log.debug("Finding user by email: {}", email);
         return userRepository.findActiveUserByEmail(email);
@@ -39,6 +52,25 @@ public class UserService {
     public Optional<User> findByGoogleId(String googleId) {
         log.debug("Finding user by googleId: {}", googleId);
         return userRepository.findActiveUserByGoogleId(googleId);
+    }
+
+    public LimitRes getUsages(UUID userId) {
+        Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(userId);
+        if (!subscription.isPresent()) {
+            throw new RuntimeException("No active subscription found for user");
+        }
+
+        Plan plan = subscription.get().getPlan();
+        UsageCycle usageCycle = usageCycleDAO.getCurrentCycle(userId, subscription.get());
+        UserDailyUsage userDailyUsage = userDailyUsageDAO.getDailyUsage(userId);
+
+        LimitStatus status = LimitStatus.OK;
+        if (userDailyUsage.getNotesUsed() >= plan.getNoteDailyLimit()
+                || usageCycle.getNotesUsed() >= plan.getNoteMonthlyLimit()) {
+            status = LimitStatus.REACHED;
+        }
+        return new LimitRes(plan.getNoteDailyLimit(), userDailyUsage.getNotesUsed(), plan.getNoteMonthlyLimit(),
+                usageCycle.getNotesUsed(), status);
     }
 
     public User createOrUpdateFromOAuth(OAuth2User oAuth2User) {

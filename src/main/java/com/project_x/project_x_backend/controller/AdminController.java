@@ -27,7 +27,7 @@ import com.project_x.project_x_backend.entity.User;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("/admin")
+@RequestMapping("api/v1/admin")
 @Slf4j
 public class AdminController {
     // Functionalities for admin

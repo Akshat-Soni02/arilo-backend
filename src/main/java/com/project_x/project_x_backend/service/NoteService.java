@@ -118,6 +118,9 @@ public class NoteService {
     @Autowired
     private NoteDAO noteDAO;
 
+    // TODO: handle subscription auto-renewal and by default auto-renew for free
+    // plan
+    // TODO: handle subscription end
     public NoteUploadResponse uploadNote(UUID userId, byte[] audioBytes, String contentType, boolean isMock)
             throws IOException {
         log.info("Starting note upload process for user {}", userId);
