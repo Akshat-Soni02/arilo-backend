@@ -27,6 +27,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import javax.naming.LimitExceededException;
+
 @RestController
 @RequestMapping("/api/v1/notes")
 @Slf4j
@@ -48,7 +50,7 @@ public class NoteController {
 
     // TODO: check audio length and suspend if more than max allowed
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<NoteUploadResponse> uploadAudioFile(
+    public ResponseEntity<?> uploadAudioFile(
             @RequestHeader("Authorization") String authorization,
             @RequestParam("file") MultipartFile file) {
 
@@ -76,12 +78,15 @@ public class NoteController {
             NoteUploadResponse noteUploadResponse = noteService.uploadNote(userId, audioBytes, contentType, false);
             log.info("Audio successfully uploaded for user {}. Note ID: {}", userId, noteUploadResponse.getNoteId());
             return ResponseEntity.status(HttpStatus.CREATED).body(noteUploadResponse);
+        } catch (LimitExceededException e) {
+            log.error("Daily limit exceeded for user: {}", e.getMessage());
+            return ResponseEntity.badRequest().body("Daily limit exceeded");
         } catch (IOException e) {
             log.error("IO error during audio upload: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (IllegalArgumentException e) {
             log.error("Validation error during audio upload: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body("Validation error");
         } catch (Exception e) {
             log.error("Unexpected error during audio upload: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

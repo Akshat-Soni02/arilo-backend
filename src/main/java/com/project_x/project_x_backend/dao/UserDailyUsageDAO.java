@@ -16,9 +16,6 @@ import java.util.UUID;
 
 import javax.naming.LimitExceededException;
 
-// TODO: increment daily usage when note is uploaded and reduce if note failed
-// TODO: while reducing, handle the case when note way submitted to prior day but when engine callback came the day changed
-
 @Component
 @Slf4j
 public class UserDailyUsageDAO {
@@ -57,6 +54,18 @@ public class UserDailyUsageDAO {
         int updated = userDailyUsageRepository.incrementUsage(userId, today, plan.getNoteDailyLimit());
         if (updated == 0) {
             throw new LimitExceededException("Daily limit reached");
+        }
+    }
+
+    @Transactional
+    public void reduceDailyUsage(UUID userId) {
+        log.debug("Reducing daily usage for user {}", userId);
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        int updated = userDailyUsageRepository.decrementUsage(userId, today);
+        if (updated == 0) {
+            log.debug("No daily usage found for user {}", userId);
+            log.debug("Consider it a previous day job and reducing previous day limit");
+            userDailyUsageRepository.decrementUsage(userId, today.minusDays(1));
         }
     }
 }

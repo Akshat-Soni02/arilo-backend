@@ -79,6 +79,13 @@ public class UsageCycleDAO {
         }
     }
 
+    @Transactional
+    public void reduceCycleUsage(UUID userId) {
+        log.debug("Reducing daily usage for user {}", userId);
+        UsageCycle usageCycle = getCurrentCycle(userId, subscriptionDAO.getUserActiveSubscription(userId).get());
+        usageCycleRepository.decrementUsage(usageCycle.getId());
+    }
+
     public UsageCycle getCurrentCycle(UUID userId, Subscription subscription) {
         Instant cycleStart = subscription.getStartDate();
         long daysSinceStart = Duration.between(cycleStart, Instant.now()).toDays();

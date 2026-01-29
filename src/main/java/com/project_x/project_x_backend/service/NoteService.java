@@ -23,11 +23,7 @@ import com.project_x.project_x_backend.dto.jobDTO.JobPollingRes;
 import com.project_x.project_x_backend.entity.ExtractedTag;
 import com.project_x.project_x_backend.entity.Job;
 import com.project_x.project_x_backend.entity.PipelineStage;
-import com.project_x.project_x_backend.dao.PipelineStageDAO;
-import com.project_x.project_x_backend.dao.NotebackDAO;
-import com.project_x.project_x_backend.dao.SttDAO;
-import com.project_x.project_x_backend.dao.SubscriptionDAO;
-import com.project_x.project_x_backend.dao.TagDAO;
+import com.project_x.project_x_backend.dao.*;
 import com.project_x.project_x_backend.enums.JobStatus;
 import com.project_x.project_x_backend.enums.NoteSortField;
 import com.project_x.project_x_backend.enums.NoteStatus;
@@ -57,6 +53,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import javax.naming.LimitExceededException;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -118,12 +116,24 @@ public class NoteService {
     @Autowired
     private NoteDAO noteDAO;
 
+    @Autowired
+    private UsageCycleDAO usageCycleDAO;
+
+    @Autowired
+    private UserDailyUsageDAO userDailyUsageDAO;
+
     // TODO: handle subscription auto-renewal and by default auto-renew for free
     // plan
     // TODO: handle subscription end
+    @Transactional
     public NoteUploadResponse uploadNote(UUID userId, byte[] audioBytes, String contentType, boolean isMock)
-            throws IOException {
+            throws LimitExceededException, IOException {
         log.info("Starting note upload process for user {}", userId);
+
+        // consume daily usage
+        userDailyUsageDAO.consumeDailyUsage(userId);
+        // consume cycle usage
+        usageCycleDAO.consumeCycleUsage(userId);
 
         Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(userId);
         if (!subscription.isPresent()) {
@@ -399,6 +409,8 @@ public class NoteService {
 
         if (allStagesFailed || allStagesExecuted) {
             jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.FAILED);
+            userDailyUsageDAO.reduceDailyUsage(engineCallbackReq.getUserId());
+            usageCycleDAO.reduceCycleUsage(engineCallbackReq.getUserId());
             log.warn("Job {} marked as FAILED because all its stages failed.", engineCallbackReq.getJobId());
         }
     }
@@ -427,6 +439,8 @@ public class NoteService {
             jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.COMPLETED);
         } else if (allStagesExecuted) {
             log.info("All stages executed for job: {}, but not all completed", engineCallbackReq.getJobId());
+            userDailyUsageDAO.reduceDailyUsage(engineCallbackReq.getUserId());
+            usageCycleDAO.reduceCycleUsage(engineCallbackReq.getUserId());
             jobDAO.updateJobStatus(engineCallbackReq.getJobId(), JobStatus.FAILED);
         }
     }
