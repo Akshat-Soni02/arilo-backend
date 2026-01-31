@@ -2,10 +2,14 @@ package com.project_x.project_x_backend.controller;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.project_x.project_x_backend.dao.JobDAO;
@@ -16,6 +20,7 @@ import com.project_x.project_x_backend.dao.UserDAO;
 import com.project_x.project_x_backend.dto.UserDetailDTO;
 import com.project_x.project_x_backend.dto.LLM.LlmMetricDetailDTO;
 import com.project_x.project_x_backend.dto.PlanDTO.PlanDetailDTO;
+import com.project_x.project_x_backend.dto.SubscriptionDTO.CreateSubscription;
 import com.project_x.project_x_backend.dto.SubscriptionDTO.SubscriptionDetailDTO;
 import com.project_x.project_x_backend.dto.jobDTO.JobDetailRes;
 import com.project_x.project_x_backend.entity.Job;
@@ -23,8 +28,11 @@ import com.project_x.project_x_backend.entity.LlmMetric;
 import com.project_x.project_x_backend.entity.Plan;
 import com.project_x.project_x_backend.entity.Subscription;
 import com.project_x.project_x_backend.entity.User;
+import com.project_x.project_x_backend.enums.PlanTypes;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("api/v1/admin")
@@ -182,4 +190,37 @@ public class AdminController {
             return null;
         }
     }
+
+    @PostMapping("/user/subscription/update")
+    public ResponseEntity<?> updateUserSubscription(@RequestParam("userId") UUID userId,
+            @RequestParam("plan") String plan) {
+        try {
+            User user = userDAO.getUserById(userId);
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not found");
+            }
+
+            Optional<Subscription> subscription = subscriptionDAO.getUserActiveSubscription(userId);
+            if (subscription.isPresent()) {
+                log.info("Cancelling subscription for user: {}, subscription type: {}", userId,
+                        subscription.get().getPlan().getName());
+                subscriptionDAO.cancelSubscription(subscription.get().getId());
+            }
+
+            if (plan.equalsIgnoreCase("free")) {
+                subscriptionDAO.createSubscription(new CreateSubscription(userId, PlanTypes.FREE));
+            } else if (plan.equalsIgnoreCase("pro")) {
+                subscriptionDAO.createSubscription(new CreateSubscription(userId, PlanTypes.PRO_MONTHLY));
+            } else {
+                log.error("Invalid plan: {}", plan);
+                subscriptionDAO.createSubscription(new CreateSubscription(userId, PlanTypes.FREE));
+                return ResponseEntity.badRequest().body("Invalid plan!, created free subscription");
+            }
+            return ResponseEntity.ok().body("Subscription updated successfully");
+        } catch (Exception e) {
+            log.error("Failed to update user subscription: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body("Failed to update user subscription");
+        }
+    }
+
 }
