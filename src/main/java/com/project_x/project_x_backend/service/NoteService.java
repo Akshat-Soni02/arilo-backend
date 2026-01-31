@@ -368,6 +368,7 @@ public class NoteService {
     public boolean handleEngineCallback(EngineCallbackReq engineCallbackReq) {
         if (engineCallbackReq.getStatus().equals(PipelineStageStatus.FAILED)) {
             checkAndMarkJobFailed(engineCallbackReq);
+            return false;
         } else if (engineCallbackReq.getStatus().equals(PipelineStageStatus.COMPLETED)) {
             checkAndMarkJobCompleted(engineCallbackReq);
         }

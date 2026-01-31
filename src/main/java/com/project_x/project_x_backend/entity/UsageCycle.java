@@ -9,7 +9,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "usage_cycles")
+@Table(name = "usage_cycles", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "user_id", "cycle_start" })
+})
 @Getter
 @Setter
 @NoArgsConstructor
