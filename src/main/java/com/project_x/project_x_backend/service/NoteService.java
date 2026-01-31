@@ -447,7 +447,9 @@ public class NoteService {
 
     public void updateUserStt(UUID jobId, UUID userId, UUID noteId, PipelineStageStatus status, JsonNode sttResult) {
         if (status.equals(PipelineStageStatus.FAILED)) {
-            sttResult = defaultOutputProvider.getFallbackStt();
+            // sttResult = defaultOutputProvider.getFallbackStt();
+            log.error("STT failed for job: {}", jobId);
+            return;
         }
 
         // save stt
@@ -487,7 +489,9 @@ public class NoteService {
 
     public void updateUserNote(UUID jobId, UUID userId, UUID noteId, PipelineStageStatus status, JsonNode noteResult) {
         if (status.equals(PipelineStageStatus.FAILED)) {
-            noteResult = defaultOutputProvider.getFallbackNoteback();
+            // noteResult = defaultOutputProvider.getFallbackNoteback();
+            log.error("Note failed for job: {}", jobId);
+            return;
         }
 
         notebackDAO.createNoteback(new CreateNoteback(jobId, userId,
