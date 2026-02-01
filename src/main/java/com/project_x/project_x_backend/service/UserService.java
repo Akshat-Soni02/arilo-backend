@@ -65,8 +65,8 @@ public class UserService {
         UserDailyUsage userDailyUsage = userDailyUsageDAO.getDailyUsage(userId);
 
         LimitStatus status = LimitStatus.OK;
-        if (userDailyUsage.getNotesUsed() >= plan.getNoteDailyLimit()
-                || usageCycle.getNotesUsed() >= plan.getNoteMonthlyLimit()) {
+        if ((userDailyUsage.getNotesUsed() >= plan.getNoteDailyLimit() && plan.getNoteDailyLimit() != -1)
+                || (usageCycle.getNotesUsed() >= plan.getNoteMonthlyLimit() && plan.getNoteMonthlyLimit() != -1)) {
             status = LimitStatus.REACHED;
         }
         return new LimitRes(plan.getNoteDailyLimit(), userDailyUsage.getNotesUsed(), plan.getNoteMonthlyLimit(),

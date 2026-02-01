@@ -16,7 +16,7 @@ public interface UsageCycleRepository extends JpaRepository<UsageCycle, UUID> {
     Optional<UsageCycle> findByUserIdAndCycleStart(UUID userId, Instant cycleStart);
 
     @Modifying
-    @Query("UPDATE UsageCycle u SET u.notesUsed = u.notesUsed + 1 WHERE u.id = :cycleId AND u.notesUsed < :limit")
+    @Query("UPDATE UsageCycle u SET u.notesUsed = u.notesUsed + 1 WHERE u.id = :cycleId AND ( :limit = -1 OR u.notesUsed < :limit )")
     int incrementUsage(@Param("cycleId") UUID cycleId, @Param("limit") int limit);
 
     @Modifying
